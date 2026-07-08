@@ -1,0 +1,37 @@
+[Unit]
+Description=BeeNut flutter-pi kiosk
+After=beenut-service.service systemd-logind.service systemd-user-sessions.service graphical.target multi-user.target
+Wants=systemd-logind.service
+Requires=beenut-service.service
+StartLimitIntervalSec=60
+StartLimitBurst=5
+
+[Service]
+Type=simple
+User=beenut
+Group=beenut
+PAMName=login
+WorkingDirectory=/opt/beenut
+Environment=HOME=/var/lib/beenut
+Environment=XDG_RUNTIME_DIR=/run/user/%U
+Environment=BEENUTD_SOCKET=/tmp/beenutd.sock
+Environment=LD_LIBRARY_PATH=/opt/beenut/lib
+Environment=BEENUT_NO_LAUNCH_DAEMON=1
+Environment=BEENUT_NO_TITLEBAR=1
+
+StandardInput=tty
+TTYPath=/dev/tty7
+TTYReset=yes
+TTYVHangup=yes
+TTYVTDisallocate=yes
+
+ExecStartPre=+/usr/bin/chvt 7
+ExecStartPre=/opt/beenut/scripts/wait-for-socket.sh /tmp/beenutd.sock
+ExecStart=/usr/bin/flutter-pi --release /opt/beenut/flutter-pi
+Restart=always
+RestartSec=5
+TimeoutStopSec=5
+KillMode=mixed
+
+[Install]
+WantedBy=graphical.target multi-user.target

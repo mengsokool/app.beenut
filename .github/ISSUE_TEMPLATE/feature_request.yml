@@ -1,0 +1,40 @@
+name: Feature request
+description: Suggest a product, packaging, hardware, or developer workflow improvement.
+title: "[Feature]: "
+labels: ["enhancement", "triage"]
+body:
+  - type: textarea
+    id: problem
+    attributes:
+      label: Problem
+      description: What workflow or deployment problem should this solve?
+    validations:
+      required: true
+  - type: textarea
+    id: proposal
+    attributes:
+      label: Proposed solution
+      description: What would you like BeeNut to do?
+    validations:
+      required: true
+  - type: dropdown
+    id: area
+    attributes:
+      label: Area
+      options:
+        - Counting UI
+        - Native service
+        - Model/inference
+        - Raspberry Pi appliance
+        - Linux packaging
+        - macOS app
+        - Windows future port
+        - Documentation
+    validations:
+      required: true
+  - type: textarea
+    id: alternatives
+    attributes:
+      label: Alternatives considered
+      description: Optional context, sketches, links, or constraints.
+

@@ -1,0 +1,38 @@
+#!/usr/bin/env sh
+set -eu
+
+rm -f /etc/systemd/system/beenut-kiosk.service
+rm -f /etc/systemd/system/beenut-kiosk-flutter-pi.service
+rm -f /etc/systemd/system/beenut-kiosk-linux.service
+rm -f /etc/systemd/system/beenut-service.service
+rm -f /etc/systemd/system/beenut-first-boot.service
+rm -f /etc/systemd/system/nutbee-kiosk.service
+rm -f /etc/systemd/system/nutbee-kiosk-flutter-pi.service
+rm -f /etc/systemd/system/nutbee-kiosk-linux.service
+rm -f /etc/systemd/system/nutbee-service.service
+rm -f /etc/systemd/system/nutbee-first-boot.service
+rm -f /etc/systemd/system/system.conf.d/beenut-quiet-boot.conf
+rm -f /etc/initramfs-tools/conf.d/beenut-splash
+
+if command -v update-initramfs >/dev/null 2>&1; then
+  update-initramfs -u >/dev/null 2>&1 || true
+fi
+
+if [ "${1:-}" = "remove" ] || [ "${1:-}" = "purge" ]; then
+  rm -f /usr/bin/beenut
+  rm -f /usr/bin/beenut-recover-desktop
+  rm -f /usr/share/applications/beenut.desktop
+  rm -f /usr/share/pixmaps/beenut.png
+  rm -f /usr/share/icons/hicolor/256x256/apps/beenut.png
+fi
+
+if command -v systemctl >/dev/null 2>&1; then
+  systemctl daemon-reload >/dev/null 2>&1 || true
+fi
+
+if [ "${1:-}" = "purge" ]; then
+  rm -rf /etc/beenut /var/lib/beenut /var/log/beenut
+  rm -rf /etc/nutbee /var/lib/nutbee /var/log/nutbee
+fi
+
+exit 0

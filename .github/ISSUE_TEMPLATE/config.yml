@@ -1,0 +1,6 @@
+blank_issues_enabled: true
+contact_links:
+  - name: Releases and downloads
+    url: https://github.com/mengsokool/app.beenut/releases
+    about: Download the latest BeeNut packages and checksums.
+

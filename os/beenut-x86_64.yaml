@@ -1,0 +1,108 @@
+# Debos Recipe for BeeNut OS (Generic x86_64 / amd64 PC)
+# Builds a bootable live Debian image for standard x86_64 computers and mini PCs.
+architecture: amd64
+
+actions:
+  # 1. Bootstrap Debian Bookworm base system for PC architecture
+  - action: debootstrap
+    suite: bookworm
+    mirror: http://deb.debian.org/debian
+    components:
+      - main
+      - contrib
+      - non-free
+      - non-free-firmware
+
+  # 2. Install essential system management utilities
+  - action: apt
+    packages:
+      - systemd-sysv
+      - udev
+      - kmod
+      - dbus
+      - policykit-1
+      - sudo
+      - zstd
+      - plymouth
+      - plymouth-themes
+
+  # 3. Install standard PC Linux Kernel and graphics drivers
+  - action: apt
+    packages:
+      - linux-image-amd64
+      - firmware-linux
+      - firmware-linux-nonfree
+      - xserver-xorg-video-intel
+      - xserver-xorg-video-amdgpu
+      - xserver-xorg-video-nouveau
+      - mesa-va-drivers
+      - mesa-vdpau-drivers
+
+  # 4. Install dependencies for UI and multimedia pipelines
+  - action: apt
+    packages:
+      - libc6
+      - libstdc++6
+      - libqt6core6
+      - libqt6network6
+      - gstreamer1.0-tools
+      - gstreamer1.0-plugins-base
+      - gstreamer1.0-plugins-good
+      - gstreamer1.0-plugins-bad
+      - gstreamer1.0-gl
+      - libegl1
+      - libgl1
+      - libgtk-3-0
+      - grub-pc
+      - grub-efi-amd64-bin
+
+  # 5. Copy custom overlays (motd, issue, systemd configuration)
+  - action: overlay
+    source: overlays
+
+  # 6. Install target BeeNut package inside PC rootfs
+  - action: overlay
+    source: deb
+    destination: /opt/beenut-packages
+
+  - action: run
+    chroot: true
+    script: install-deb.sh
+
+  # 7. Configure services & systemd auto-login loop
+  - action: run
+    chroot: true
+    script: enable-appliance-services.sh
+
+  # 8. Setup GRUB Bootloader for PC compatibility
+  - action: run
+    chroot: true
+    script: configure-grub-silent.sh
+
+  # 9. Configure dual-boot UEFI and Legacy partition layout
+  - action: image-partition
+    imagename: {{.IMAGE_NAME}}
+    imagesize: 3GB
+    partitiontype: msdos
+    mountpoints:
+      - mountpoint: /
+        partition: root
+      - mountpoint: /boot/efi
+        partition: boot
+    partitions:
+      - name: boot
+        fs: vfat
+        start: 0%
+        end: 256MB
+      - name: root
+        fs: ext4
+        start: 256MB
+        end: 100%
+
+  # 10. Copy configured root filesystem into the disk image
+  - action: filesystem-deploy
+
+  # 11. Install bootloader in disk image
+  - action: run
+    chroot: true
+    script: install-grub-x86_64.sh

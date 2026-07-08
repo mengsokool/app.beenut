@@ -1,0 +1,10 @@
+#!/usr/bin/env sh
+set -eu
+
+arch="$(dpkg --print-architecture)"
+if [ "$arch" != "arm64" ] && [ "$arch" != "amd64" ]; then
+  echo "beenut supports 64-bit architectures (arm64/amd64). Found: $arch" >&2
+  exit 1
+fi
+
+exit 0

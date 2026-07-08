@@ -1,0 +1,100 @@
+name: Flutter
+
+on:
+  push:
+    branches: [main, master]
+  pull_request:
+
+jobs:
+  analyze-test:
+    name: Analyze and test
+    runs-on: ubuntu-24.04
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+
+      - name: Set up Flutter
+        uses: subosito/flutter-action@v2
+        with:
+          channel: stable
+          cache: true
+
+      - name: Install dependencies
+        run: flutter pub get
+
+      - name: Analyze Dart
+        run: flutter analyze
+
+      - name: Run Flutter tests
+        run: flutter test
+
+      - name: Check production shell scripts
+        shell: bash
+        run: |
+          bash -n scripts/assemble-package.sh
+          bash -n scripts/build-debian.sh
+          bash -n scripts/build-macos.sh
+          bash -n scripts/build-os-orbstack.sh
+          bash -n scripts/build-pi.sh
+          bash -n scripts/build-service.sh
+          bash -n scripts/create-release-evidence-set.sh
+          bash -n scripts/create-release-manifest.sh
+          bash -n scripts/desktop-field-validation.sh
+          bash -n scripts/gpio-field-test.sh
+          bash -n scripts/install-linux.sh
+          bash -n scripts/pi-field-validation.sh
+          bash -n scripts/pi-install-deps.sh
+          bash -n scripts/pi-run.sh
+          bash -n scripts/pi-smoke.sh
+          bash -n scripts/probe-phase-hardware.sh
+          bash -n scripts/smoke-backend.sh
+          bash -n scripts/usb-update-field-validation.sh
+          bash -n scripts/validate-phase-gates.sh
+          bash -n os/build-beenut-image.sh
+          bash -n os/configure-grub-silent.sh
+          bash -n os/configure-rpi-boot.sh
+          bash -n os/enable-appliance-services.sh
+          bash -n os/install-deb.sh
+          bash -n os/install-grub-arm64.sh
+          bash -n os/install-grub-x86_64.sh
+          bash -n packaging/scripts/apply-usb-update.sh
+          bash -n packaging/scripts/collect-diagnostics.sh
+          bash -n packaging/scripts/factory-reset.sh
+          bash -n packaging/scripts/first-boot.sh
+          bash -n packaging/scripts/wait-for-socket.sh
+
+      - name: Check Python release helpers
+        shell: bash
+        run: |
+          python3 -m py_compile \
+            packaging/setup/beenut_setup.py \
+            scripts/check-phase-evidence.py
+
+  native-service:
+    name: Native service build and tests
+    runs-on: macos-14
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+
+      - name: Install native dependencies
+        shell: bash
+        run: |
+          brew update
+          brew install pkg-config qt gstreamer gst-plugins-base gst-plugins-good gst-plugins-bad onnxruntime
+
+      - name: Configure service
+        shell: bash
+        run: |
+          BREW_PREFIX="$(brew --prefix)"
+          QT_PREFIX="$(brew --prefix qt)"
+          GSTREAMER_PREFIX="$BREW_PREFIX"
+          CMAKE_PREFIX_PATH="$QT_PREFIX:$GSTREAMER_PREFIX:$(brew --prefix onnxruntime)" \
+          PKG_CONFIG_PATH="$BREW_PREFIX/lib/pkgconfig:$BREW_PREFIX/share/pkgconfig:$GSTREAMER_PREFIX/lib/pkgconfig" \
+          cmake -S service -B service/build -DCMAKE_BUILD_TYPE=Release -DCMAKE_EXPORT_COMPILE_COMMANDS=ON
+
+      - name: Build service tests
+        run: cmake --build service/build --target service_tests -j 3
+
+      - name: Run service tests
+        run: ctest --test-dir service/build --output-on-failure

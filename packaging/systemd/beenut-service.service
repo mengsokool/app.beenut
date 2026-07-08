@@ -1,0 +1,21 @@
+[Unit]
+Description=BeeNut native service
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+User=beenut
+Group=beenut
+WorkingDirectory=/opt/beenut
+Environment=GST_PLUGIN_SYSTEM_PATH_1_0=/usr/lib/aarch64-linux-gnu/gstreamer-1.0
+Environment=GST_PLUGIN_PATH_1_0=
+Environment=LD_LIBRARY_PATH=/opt/beenut/lib
+ExecStart=/opt/beenut/bin/beenutd --config /etc/beenut/config.json
+Restart=always
+RestartSec=2
+PrivateTmp=false
+ReadWritePaths=/etc/beenut /var/lib/beenut /var/log/beenut /tmp
+
+[Install]
+WantedBy=multi-user.target

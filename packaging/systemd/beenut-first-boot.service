@@ -1,0 +1,15 @@
+[Unit]
+Description=BeeNut first boot hardware setup
+Before=beenut-service.service
+ConditionPathExists=!/var/lib/beenut/first-boot.done
+
+[Service]
+Type=oneshot
+User=root
+Group=root
+Environment=BEENUT_CONFIG=/etc/beenut/config.json
+ExecStart=/opt/beenut/scripts/first-boot.sh
+RemainAfterExit=yes
+
+[Install]
+WantedBy=multi-user.target

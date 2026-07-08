@@ -1,0 +1,289 @@
+name: Release
+
+on:
+  push:
+    tags:
+      - "v*"
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: "Release tag, for example v0.2.0"
+        required: true
+        type: string
+      build_linux_amd64:
+        description: "Build Linux AMD64 (.deb)"
+        type: boolean
+        required: true
+        default: true
+      build_linux_arm64:
+        description: "Build Linux ARM64 (.deb)"
+        type: boolean
+        required: true
+        default: true
+      build_macos:
+        description: "Build macOS (.app.zip)"
+        type: boolean
+        required: true
+        default: true
+
+permissions:
+  contents: write
+
+jobs:
+  linux-deb:
+    name: Build Linux desktop .deb
+    runs-on: ubuntu-24.04
+    if: github.event_name == 'push' || github.event.inputs.build_linux_amd64 == 'true'
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+
+      - name: Set release version
+        shell: bash
+        run: |
+          TAG="${{ github.event.inputs.tag || github.ref_name }}"
+          VERSION="${TAG#v}"
+          echo "BEENUT_VERSION=$VERSION" >> "$GITHUB_ENV"
+
+      - name: Set up Flutter
+        uses: subosito/flutter-action@v2
+        with:
+          channel: stable
+          cache: true
+
+      - name: Install Linux build dependencies
+        shell: bash
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y \
+            clang cmake curl g++ gawk libgtk-3-dev libgstreamer1.0-dev \
+            libgstreamer-plugins-base1.0-dev liblzma-dev ninja-build \
+            pkg-config qt6-base-dev unzip xz-utils
+
+      - name: Download ONNX Runtime
+        shell: bash
+        run: |
+          ORT_VERSION="1.18.1"
+          ORT_DIR="$RUNNER_TEMP/onnxruntime-linux-x64-$ORT_VERSION"
+          curl -fsSL \
+            "https://github.com/microsoft/onnxruntime/releases/download/v$ORT_VERSION/onnxruntime-linux-x64-$ORT_VERSION.tgz" \
+            -o "$RUNNER_TEMP/onnxruntime.tgz"
+          mkdir -p "$ORT_DIR"
+          tar -xzf "$RUNNER_TEMP/onnxruntime.tgz" -C "$RUNNER_TEMP"
+          echo "ONNXRUNTIME_ROOT=$ORT_DIR" >> "$GITHUB_ENV"
+
+      - name: Build native service
+        shell: bash
+        run: |
+          cmake -S service -B service/build \
+            -DCMAKE_BUILD_TYPE=Release \
+            -DCMAKE_PREFIX_PATH="$ONNXRUNTIME_ROOT" \
+            -DCMAKE_EXPORT_COMPILE_COMMANDS=ON
+          cmake --build service/build -j 3
+
+      - name: Build Flutter Linux bundle
+        shell: bash
+        run: |
+          flutter config --enable-linux-desktop
+          flutter pub get
+          flutter build linux --release
+
+      - name: Build Debian package
+        shell: bash
+        run: |
+          mkdir -p dist
+          BEENUT_VERSION="$BEENUT_VERSION" \
+          BEENUT_ARCH=amd64 \
+          BEENUT_PACKAGE_PROFILE=desktop \
+          BEENUT_KIOSK_MODE=linux \
+          BEENUTD_BIN="$PWD/service/build/src/beenutd/beenutd" \
+          FLUTTER_LINUX_BUNDLE_DIR="$PWD/build/linux/x64/release/bundle" \
+          ONNXRUNTIME_LIB_DIR="$ONNXRUNTIME_ROOT/lib" \
+          OUTPUT_DIR="$PWD/dist" \
+          scripts/build-debian.sh
+
+      - name: Upload Linux artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: beenut-linux-deb
+          path: dist/*.deb
+          if-no-files-found: error
+
+  linux-deb-arm64:
+    name: Build Linux desktop .deb (ARM64)
+    runs-on: ubuntu-24.04-arm
+    if: github.event_name == 'push' || github.event.inputs.build_linux_arm64 == 'true'
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+
+      - name: Set release version
+        shell: bash
+        run: |
+          TAG="${{ github.event.inputs.tag || github.ref_name }}"
+          VERSION="${TAG#v}"
+          echo "BEENUT_VERSION=$VERSION" >> "$GITHUB_ENV"
+
+      - name: Set up Flutter manually (ARM64)
+        shell: bash
+        run: |
+          git clone https://github.com/flutter/flutter.git -b stable --depth 1
+          echo "$GITHUB_WORKSPACE/flutter/bin" >> $GITHUB_PATH
+
+      - name: Install Linux build dependencies
+        shell: bash
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y \
+            clang cmake curl g++ gawk libgtk-3-dev libgstreamer1.0-dev \
+            libgstreamer-plugins-base1.0-dev liblzma-dev ninja-build \
+            pkg-config qt6-base-dev unzip xz-utils
+
+      - name: Download ONNX Runtime
+        shell: bash
+        run: |
+          ORT_VERSION="1.18.1"
+          ORT_DIR="$RUNNER_TEMP/onnxruntime-linux-aarch64-$ORT_VERSION"
+          curl -fsSL \
+            "https://github.com/microsoft/onnxruntime/releases/download/v$ORT_VERSION/onnxruntime-linux-aarch64-$ORT_VERSION.tgz" \
+            -o "$RUNNER_TEMP/onnxruntime.tgz"
+          mkdir -p "$ORT_DIR"
+          tar -xzf "$RUNNER_TEMP/onnxruntime.tgz" -C "$RUNNER_TEMP"
+          echo "ONNXRUNTIME_ROOT=$ORT_DIR" >> "$GITHUB_ENV"
+
+      - name: Build native service
+        shell: bash
+        run: |
+          cmake -S service -B service/build \
+            -DCMAKE_BUILD_TYPE=Release \
+            -DCMAKE_PREFIX_PATH="$ONNXRUNTIME_ROOT" \
+            -DCMAKE_EXPORT_COMPILE_COMMANDS=ON
+          cmake --build service/build -j 3
+
+      - name: Build Flutter Linux bundle
+        shell: bash
+        run: |
+          flutter config --enable-linux-desktop
+          flutter pub get
+          flutter build linux --release
+
+      - name: Build Debian package
+        shell: bash
+        run: |
+          mkdir -p dist
+          BEENUT_VERSION="$BEENUT_VERSION" \
+          BEENUT_ARCH=arm64 \
+          BEENUT_PACKAGE_PROFILE=desktop \
+          BEENUT_KIOSK_MODE=linux \
+          BEENUTD_BIN="$PWD/service/build/src/beenutd/beenutd" \
+          FLUTTER_LINUX_BUNDLE_DIR="$PWD/build/linux/arm64/release/bundle" \
+          ONNXRUNTIME_LIB_DIR="$ONNXRUNTIME_ROOT/lib" \
+          OUTPUT_DIR="$PWD/dist" \
+          scripts/build-debian.sh
+
+      - name: Upload Linux artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: beenut-linux-deb-arm64
+          path: dist/*.deb
+          if-no-files-found: error
+
+  macos-app:
+    name: Build macOS .app.zip and .dmg
+    runs-on: macos-14
+    if: github.event_name == 'push' || github.event.inputs.build_macos == 'true'
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+
+      - name: Set release version
+        shell: bash
+        run: |
+          TAG="${{ github.event.inputs.tag || github.ref_name }}"
+          VERSION="${TAG#v}"
+          echo "BEENUT_VERSION=$VERSION" >> "$GITHUB_ENV"
+
+      - name: Set up Flutter
+        uses: subosito/flutter-action@v2
+        with:
+          channel: stable
+          cache: true
+
+      - name: Install native dependencies
+        shell: bash
+        run: |
+          brew update
+          brew install pkg-config qt gstreamer gst-plugins-base gst-plugins-good gst-plugins-bad onnxruntime
+
+      - name: Build macOS app
+        shell: bash
+        run: |
+          scripts/build-macos.sh
+          mkdir -p dist
+          ditto -c -k --keepParent "build/macos/Build/Products/Release/BeeNut.app" "dist/BeeNut-macos-${BEENUT_VERSION}.app.zip"
+          scripts/create-macos-dmg.sh \
+            "build/macos/Build/Products/Release/BeeNut.app" \
+            "dist/BeeNut-macos-${BEENUT_VERSION}.dmg"
+
+      - name: Upload macOS artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: beenut-macos-app
+          path: |
+            dist/*.zip
+            dist/*.dmg
+          if-no-files-found: error
+
+  publish:
+    name: Publish GitHub Release
+    runs-on: ubuntu-24.04
+    needs:
+      - linux-deb
+      - linux-deb-arm64
+      - macos-app
+    if: |
+      always() &&
+      !contains(needs.*.result, 'failure') &&
+      !contains(needs.*.result, 'cancelled')
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+
+      - name: Set release metadata
+        shell: bash
+        run: |
+          TAG="${{ github.event.inputs.tag || github.ref_name }}"
+          VERSION="${TAG#v}"
+          echo "RELEASE_TAG=$TAG" >> "$GITHUB_ENV"
+          echo "BEENUT_VERSION=$VERSION" >> "$GITHUB_ENV"
+          if [[ "$TAG" =~ (alpha|beta|rc) ]]; then
+            echo "PRERELEASE=true" >> "$GITHUB_ENV"
+          else
+            echo "PRERELEASE=false" >> "$GITHUB_ENV"
+          fi
+
+      - name: Download build artifacts
+        uses: actions/download-artifact@v4
+        with:
+          path: dist
+          merge-multiple: true
+
+      - name: Add installer and checksums
+        shell: bash
+        run: |
+          shopt -s nullglob
+          cp scripts/install-linux.sh "dist/install-linux.sh"
+          chmod 0755 "dist/install-linux.sh"
+          BEENUT_VERSION="$BEENUT_VERSION" OUTPUT_DIR="$PWD/dist" \
+            scripts/create-release-manifest.sh dist/*.deb dist/*.zip dist/install-linux.sh
+
+      - name: Publish release
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: ${{ env.RELEASE_TAG }}
+          name: BeeNut ${{ env.RELEASE_TAG }}
+          draft: false
+          prerelease: ${{ env.PRERELEASE }}
+          generate_release_notes: true
+          files: |
+            dist/*

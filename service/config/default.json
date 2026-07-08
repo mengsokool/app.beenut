@@ -1,0 +1,47 @@
+{
+    "schema_version": 1,
+    "camera": {
+        "device": "0",
+        "exposure_mode": "auto",
+        "flip_horizontal": true,
+        "flip_vertical": false,
+        "fps": 15,
+        "height": 480,
+        "idle_fps": 2,
+        "preview_transport": "iosurface_nv12",
+        "source": "avfoundation",
+        "warmup_frames": 30,
+        "width": 480
+    },
+    "controlSocket": "/tmp/beenutd.sock",
+    "counting": {
+        "part_types": [],
+        "selected_part_type": "",
+        "stable_frames": 5,
+        "timeout_ms": 2500,
+        "trigger_mode": "real_time"
+    },
+    "gpio": {
+        "active_low": true,
+        "backend": "auto",
+        "chip": "gpiochip0",
+        "debounce_ms": 80,
+        "relay_pin": 27,
+        "tray_sensor_pin": 22
+    },
+    "model": {
+        "confidence_threshold": 0.8,
+        "engine": "onnx",
+        "labels_mode": "auto",
+        "labels_path": "",
+        "input_size": 640,
+        "max_fps": 3,
+        "model_path": "service/models/yolo26n/yolo26n.onnx",
+        "nms_threshold": 0.5
+    },
+    "previewSocket": "/tmp/beenut-preview.sock",
+    "ui": {
+        "scale": 1.0
+    },
+    "safe_mode": false
+}

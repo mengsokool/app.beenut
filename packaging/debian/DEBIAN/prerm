@@ -1,0 +1,34 @@
+#!/usr/bin/env sh
+set -eu
+
+if command -v systemctl >/dev/null 2>&1; then
+  systemctl set-default graphical.target >/dev/null 2>&1 || true
+  for unit in lightdm.service gdm.service gdm3.service sddm.service lxdm.service display-manager.service; do
+    if systemctl list-unit-files "$unit" >/dev/null 2>&1; then
+      systemctl enable --now "$unit" >/dev/null 2>&1 || true
+      break
+    fi
+  done
+  systemctl stop nutbee-kiosk.service >/dev/null 2>&1 || true
+  systemctl stop nutbee-kiosk-flutter-pi.service >/dev/null 2>&1 || true
+  systemctl stop nutbee-kiosk-linux.service >/dev/null 2>&1 || true
+  systemctl stop nutbee-service.service >/dev/null 2>&1 || true
+  systemctl stop nutbee-first-boot.service >/dev/null 2>&1 || true
+  systemctl stop beenut-kiosk.service >/dev/null 2>&1 || true
+  systemctl stop beenut-kiosk-flutter-pi.service >/dev/null 2>&1 || true
+  systemctl stop beenut-kiosk-linux.service >/dev/null 2>&1 || true
+  systemctl stop beenut-service.service >/dev/null 2>&1 || true
+  systemctl stop beenut-first-boot.service >/dev/null 2>&1 || true
+  systemctl disable nutbee-kiosk.service >/dev/null 2>&1 || true
+  systemctl disable nutbee-kiosk-flutter-pi.service >/dev/null 2>&1 || true
+  systemctl disable nutbee-kiosk-linux.service >/dev/null 2>&1 || true
+  systemctl disable nutbee-service.service >/dev/null 2>&1 || true
+  systemctl disable nutbee-first-boot.service >/dev/null 2>&1 || true
+  systemctl disable beenut-kiosk.service >/dev/null 2>&1 || true
+  systemctl disable beenut-kiosk-flutter-pi.service >/dev/null 2>&1 || true
+  systemctl disable beenut-kiosk-linux.service >/dev/null 2>&1 || true
+  systemctl disable beenut-service.service >/dev/null 2>&1 || true
+  systemctl disable beenut-first-boot.service >/dev/null 2>&1 || true
+fi
+
+exit 0

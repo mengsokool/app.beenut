@@ -1,0 +1,103 @@
+# Debos Recipe for BeeNut OS Appliance
+# Builds a Raspberry Pi OS Lite 64-bit bootable image preconfigured with BeeNut.
+architecture: arm64
+
+actions:
+  # 1. Bootstrap Raspberry Pi OS / Debian Bookworm base filesystem
+  - action: debootstrap
+    suite: bookworm
+    mirror: http://deb.debian.org/debian
+    components:
+      - main
+      - contrib
+      - non-free
+      - non-free-firmware
+
+  # 2. Add Raspberry Pi OS repositories for specific firmware & libcamera packages
+  - action: apt
+    packages:
+      - curl
+      - gnupg
+      - ca-certificates
+
+  - action: run
+    chroot: true
+    script: |
+      echo "deb http://archive.raspberrypi.com/debian/ bookworm main" > /etc/apt/sources.list.d/raspi.list
+      curl -fsSL http://archive.raspberrypi.com/debian/raspberrypi.gpg.key | gpg --dearmor -o /etc/apt/trusted.gpg.d/raspberrypi.gpg
+      apt-get update
+
+  # 3. Install core system packages for GPU, camera, and services
+  - action: apt
+    packages:
+      - systemd-sysv
+      - udev
+      - kmod
+      - dbus
+      - policykit-1
+      - sudo
+      - zstd
+      - firmware-linux
+      - firmware-brcm80211
+      - raspi-firmware
+      - linux-image-reference-arm64
+      - libc6
+      - libstdc++6
+      - libqt6core6
+      - libqt6network6
+      - gstreamer1.0-tools
+      - gstreamer1.0-plugins-base
+      - gstreamer1.0-plugins-good
+      - gstreamer1.0-plugins-bad
+      - gstreamer1.0-libcamera
+      - gpiod
+      - libegl1
+      - libgl1
+      - libgtk-3-0
+      - plymouth
+      - plymouth-themes
+
+  # 4. Copy custom configuration, systemd services, and branding overlays
+  - action: overlay
+    source: overlays
+
+  # 5. Copy the built BeeNut package and install it inside the target rootfs
+  - action: overlay
+    source: deb
+    destination: /opt/beenut-packages
+
+  - action: run
+    chroot: true
+    script: install-deb.sh
+
+  # 6. Enable essential appliance service loops
+  - action: run
+    chroot: true
+    script: enable-appliance-services.sh
+
+  # 7. Configure boot configuration for Raspberry Pi display and camera
+  - action: run
+    chroot: true
+    script: configure-rpi-boot.sh
+
+  # 8. Configure filesystem partitions and build bootable raw image
+  - action: image-partition
+    imagename: {{.IMAGE_NAME}}
+    imagesize: 2GB
+    partitiontype: msdos
+    mountpoints:
+      - mountpoint: /
+        partition: root
+      - mountpoint: /boot/firmware
+        partition: boot
+    partitions:
+      - name: boot
+        fs: vfat
+        start: 0%
+        end: 128MB
+      - name: root
+        fs: ext4
+        start: 128MB
+        end: 100%
+
+  - action: filesystem-deploy

@@ -1,0 +1,19 @@
+{
+  "id": "pills-detection",
+  "name": "Pills Detection (YOLOv8)",
+  "source": "seblful/pills-detection",
+  "source_url": "https://github.com/seblful/pills-detection",
+  "docs_url": "https://github.com/seblful/pills-detection",
+  "license": "MIT",
+  "task": "object-detection",
+  "dataset": "Pills-Detection-19",
+  "imgsz": 640,
+  "files": {
+    "onnx": "pills_detection.onnx",
+    "labels": "labels.txt"
+  },
+  "sha256": {
+    "onnx": "71233cc41514853b7245ee4baf7cd13eb83ef49defc19bf7c0df8b2d39bb9c46"
+  },
+  "note": "A custom YOLOv8 model trained on tablets and capsules."
+}

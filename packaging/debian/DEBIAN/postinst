@@ -1,0 +1,59 @@
+#!/usr/bin/env sh
+set -eu
+
+package_profile="$(cat /opt/beenut/package-profile 2>/dev/null || echo appliance-pi)"
+
+if command -v systemctl >/dev/null 2>&1; then
+  systemctl stop nutbee-kiosk.service >/dev/null 2>&1 || true
+  systemctl stop nutbee-kiosk-flutter-pi.service >/dev/null 2>&1 || true
+  systemctl stop nutbee-kiosk-linux.service >/dev/null 2>&1 || true
+  systemctl stop nutbee-service.service >/dev/null 2>&1 || true
+  systemctl stop nutbee-first-boot.service >/dev/null 2>&1 || true
+  systemctl disable nutbee-kiosk.service >/dev/null 2>&1 || true
+  systemctl disable nutbee-kiosk-flutter-pi.service >/dev/null 2>&1 || true
+  systemctl disable nutbee-kiosk-linux.service >/dev/null 2>&1 || true
+  systemctl disable nutbee-service.service >/dev/null 2>&1 || true
+  systemctl disable nutbee-first-boot.service >/dev/null 2>&1 || true
+fi
+rm -f /etc/systemd/system/nutbee-kiosk.service
+rm -f /etc/systemd/system/nutbee-kiosk-flutter-pi.service
+rm -f /etc/systemd/system/nutbee-kiosk-linux.service
+rm -f /etc/systemd/system/nutbee-service.service
+rm -f /etc/systemd/system/nutbee-first-boot.service
+
+mkdir -p /usr/bin /usr/share/applications /usr/share/pixmaps /usr/share/icons/hicolor/256x256/apps
+cat >/usr/bin/beenut <<'SH'
+#!/usr/bin/env sh
+export LD_LIBRARY_PATH="/opt/beenut/flutter-linux/lib:/opt/beenut/lib:${LD_LIBRARY_PATH:-}"
+exec /opt/beenut/flutter-linux/beenut "$@"
+SH
+chmod 0755 /usr/bin/beenut
+cat >/usr/share/applications/beenut.desktop <<'DESKTOP'
+[Desktop Entry]
+Type=Application
+Name=BeeNut
+Comment=Industrial counting app
+Exec=/usr/bin/beenut
+Icon=beenut
+Terminal=false
+Categories=Utility;Science;
+StartupNotify=true
+DESKTOP
+chmod 0644 /usr/share/applications/beenut.desktop
+if [ -f /opt/beenut/branding/logo.png ]; then
+  cp /opt/beenut/branding/logo.png /usr/share/pixmaps/beenut.png
+  cp /opt/beenut/branding/logo.png /usr/share/icons/hicolor/256x256/apps/beenut.png
+  chmod 0644 /usr/share/pixmaps/beenut.png /usr/share/icons/hicolor/256x256/apps/beenut.png
+fi
+
+if command -v beenut-setup >/dev/null 2>&1; then
+  beenut-setup --non-interactive --no-appliance-hardening --profile "$package_profile"
+else
+  echo "beenut-setup not found; BeeNut setup deferred. Run 'sudo beenut-setup' after installation." >&2
+fi
+
+if command -v systemctl >/dev/null 2>&1; then
+  systemctl daemon-reload >/dev/null 2>&1 || true
+fi
+
+exit 0

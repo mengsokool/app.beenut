@@ -1,0 +1,13 @@
+Package: beenut
+Version: 0.2.0
+Section: misc
+Priority: optional
+Architecture: arm64
+Maintainer: BeeNut Team <root@localhost>
+Depends: libc6, libstdc++6, libgtk-3-0, libegl1, libgl1, libqt6core6, libqt6network6, gstreamer1.0-tools, gstreamer1.0-plugins-base, gstreamer1.0-plugins-good, gstreamer1.0-plugins-bad, gpiod, gstreamer1.0-libcamera, flutter-pi
+Provides: nutbee-flutter
+Replaces: nutbee-flutter
+Breaks: nutbee-flutter
+Conflicts: nutbee-flutter
+Description: Raspberry Pi BeeNut counting appliance
+ Native GStreamer/ONNX Runtime service and Flutter kiosk UI for industrial part counting.
