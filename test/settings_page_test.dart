@@ -66,6 +66,34 @@ void main() {
     );
     expect(find.byType(SidebarShutdownButton), findsOneWidget);
   });
+
+  testWidgets('settings desktop sidebar destinations remain scrollable', (
+    tester,
+  ) async {
+    await tester.binding.setSurfaceSize(const Size(900, 360));
+    addTearDown(() => tester.binding.setSurfaceSize(null));
+
+    await tester.pumpWidget(
+      MaterialApp(
+        theme: BeenutTheme.light,
+        home: Scaffold(
+          body: SettingsPage(
+            snapshot: _snapshot,
+            client: _FakeClient(),
+            cameraPermission: CameraPermissionStatus.authorized,
+            onRefreshCameraPermission: () async {},
+            onClose: () {},
+          ),
+        ),
+      ),
+    );
+
+    final sidebarListViews = tester
+        .widgetList<ListView>(find.byType(ListView))
+        .where((list) => list.physics is AlwaysScrollableScrollPhysics);
+
+    expect(sidebarListViews, isNotEmpty);
+  });
 }
 
 const _snapshot = MachineSnapshot(

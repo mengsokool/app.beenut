@@ -157,9 +157,9 @@ class StatusSettingsTab extends StatelessWidget {
           title: 'Resource Usage',
           children: [
             Padding(
-              padding: const EdgeInsets.all(16),
+              padding: const EdgeInsets.all(12),
               child: SizedBox(
-                height: 320,
+                height: 360,
                 child: ResourceHistoryChart(
                   daemonCpu: state.daemonCpu,
                   daemonRam: state.daemonRam,
@@ -264,7 +264,7 @@ class StatusSettingsTab extends StatelessWidget {
             ),
             IconInfoRow(
               icon: validation.ok
-                  ? Icons.check_circle_outline
+                  ? Icons.check_box_outlined
                   : Icons.error_outline,
               iconColor: validation.ok
                   ? (validation.warnings.isEmpty

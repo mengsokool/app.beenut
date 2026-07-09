@@ -75,13 +75,15 @@ class _SelectSettingRowState extends State<SelectSettingRow> {
           ),
           shape: WidgetStatePropertyAll(
             RoundedRectangleBorder(
-              borderRadius: BorderRadius.circular(8),
+              borderRadius: BorderRadius.all(Radius.circular(4)),
               side: BorderSide(color: scheme.outlineVariant),
             ),
           ),
           minimumSize: const WidgetStatePropertyAll(Size(150, 0)),
           maximumSize: const WidgetStatePropertyAll(Size(150, double.infinity)),
-          padding: const WidgetStatePropertyAll(EdgeInsets.symmetric(vertical: 4)),
+          padding: const WidgetStatePropertyAll(
+            EdgeInsets.symmetric(vertical: 4),
+          ),
         ),
         menuChildren: [
           for (final option in widget.options)
@@ -96,7 +98,11 @@ class _SelectSettingRowState extends State<SelectSettingRow> {
                   EdgeInsets.symmetric(horizontal: 12),
                 ),
                 alignment: Alignment.centerLeft,
-                shape: const WidgetStatePropertyAll(RoundedRectangleBorder()),
+                shape: const WidgetStatePropertyAll(
+                  RoundedRectangleBorder(
+                    borderRadius: BorderRadius.all(Radius.circular(4)),
+                  ),
+                ),
               ),
               child: Text(
                 option,
@@ -271,7 +277,9 @@ class PathSettingRow extends StatelessWidget {
             fontSize: 12,
             fontWeight: FontWeight.w700,
           ),
-          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.all(Radius.circular(4)),
+          ),
         ),
       ),
     );

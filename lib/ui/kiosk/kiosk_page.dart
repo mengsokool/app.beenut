@@ -3,6 +3,7 @@ import '../../core/models.dart';
 import '../../core/service_client.dart';
 import '../../core/system_permissions.dart';
 import '../../core/i18n.dart';
+import '../../core/theme.dart';
 import 'count_panel.dart';
 import 'part_selector.dart';
 import 'preview_pane.dart';
@@ -129,20 +130,20 @@ class _KioskPageState extends State<KioskPage> {
     required Color statusColor,
   }) {
     return Padding(
-      padding: const EdgeInsets.all(8),
+      padding: const EdgeInsets.all(12),
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
           AspectRatio(aspectRatio: 1.0, child: _previewPane()),
-          const SizedBox(width: 12),
+          const SizedBox(width: 14),
           Expanded(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
                 _partSelector(parts),
-                const SizedBox(height: 12),
+                const SizedBox(height: 14),
                 Expanded(child: _countPanel(title, subtitle, statusColor)),
-                const SizedBox(height: 12),
+                const SizedBox(height: 14),
                 _footerButtons(context),
               ],
             ),
@@ -240,6 +241,8 @@ class _KioskPageState extends State<KioskPage> {
     return CountPanel(
       count: state.count,
       color: statusColor,
+      title: title,
+      subtitle: subtitle,
       isLoading: state.countTestRunning,
       isMuted: isMuted,
     );
@@ -249,7 +252,7 @@ class _KioskPageState extends State<KioskPage> {
     return Row(
       children: [
         Expanded(child: _settingsButton()),
-        const SizedBox(width: 12),
+        const SizedBox(width: 14),
         Expanded(child: _powerButton(context)),
       ],
     );
@@ -264,14 +267,14 @@ class _KioskPageState extends State<KioskPage> {
         button: true,
         label: label,
         child: SizedBox(
-          height: 44,
+          height: 52,
           child: IconButton.filled(
             onPressed: widget.onOpenSettings,
             icon: const Icon(Icons.settings_outlined, size: 18),
             style: IconButton.styleFrom(
               foregroundColor: scheme.onPrimary,
               backgroundColor: scheme.primary,
-              shape: const StadiumBorder(),
+              shape: BeenutTheme.controlShape,
             ),
           ),
         ),
@@ -291,21 +294,14 @@ class _KioskPageState extends State<KioskPage> {
         button: true,
         label: label,
         child: SizedBox(
-          height: 44,
+          height: 52,
           child: IconButton.filled(
             onPressed: () => widget.client.setPreviewPaused(!paused),
-            icon: Icon(
-              paused ? Icons.play_arrow_rounded : Icons.pause_rounded,
-              size: 20,
-            ),
+            icon: Icon(paused ? Icons.play_arrow : Icons.pause, size: 20),
             style: IconButton.styleFrom(
-              foregroundColor: paused
-                  ? scheme.onPrimary
-                  : scheme.onSecondary,
-              backgroundColor: paused
-                  ? scheme.primary
-                  : scheme.secondary,
-              shape: const StadiumBorder(),
+              foregroundColor: paused ? scheme.onPrimary : scheme.onSecondary,
+              backgroundColor: paused ? scheme.primary : scheme.secondary,
+              shape: BeenutTheme.controlShape,
             ),
           ),
         ),

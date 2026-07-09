@@ -68,7 +68,9 @@ class ActionSettingRow extends StatelessWidget {
       fontSize: 11,
       fontWeight: FontWeight.w700,
     ),
-    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+    shape: RoundedRectangleBorder(
+      borderRadius: BorderRadius.all(Radius.circular(4)),
+    ),
   );
 
   ButtonStyle _outlinedActionStyle() => OutlinedButton.styleFrom(
@@ -80,6 +82,8 @@ class ActionSettingRow extends StatelessWidget {
       fontSize: 11,
       fontWeight: FontWeight.w700,
     ),
-    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+    shape: RoundedRectangleBorder(
+      borderRadius: BorderRadius.all(Radius.circular(4)),
+    ),
   );
 }

@@ -50,13 +50,14 @@ class I18n {
       'select_model_desc': 'Select model file from local storage or USB drive',
       'select_model_btn': 'Select Model',
       'detect_class_names':
-          'Detect class names from model metadata or choose a custom labels file',
-      'labels_override_desc': 'Labels file to use instead of auto detection',
+          'Read class names from ONNX metadata, then labels.txt next to the model',
+      'labels_override_desc':
+          'Optional labels file to use instead of auto detection',
       'select_labels_btn': 'Select Labels',
       'max_fps_desc': 'Maximum inference rate per second',
       'input_size_desc': 'Size of square image sent to the AI model',
       'err_no_metadata_labels':
-          'Auto detect: failed to read classes from metadata',
+          'Auto detect: add labels.txt if the ONNX file has no class names',
       'no_loaded_classes': 'No classes loaded by the backend from {source}',
       'loaded_from_source': 'From {source}',
       'close': 'Close',
@@ -211,12 +212,14 @@ class I18n {
       'select_model_desc': 'เลือกไฟล์โมเดลจากเครื่องหรือ drive/USB',
       'select_model_btn': 'เลือกโมเดล',
       'detect_class_names':
-          'อ่าน class names จาก metadata ในโมเดล หรือเลือก labels file เอง',
-      'labels_override_desc': 'ไฟล์ labels ที่ต้องการใช้แทนการตรวจจับอัตโนมัติ',
+          'อ่าน class names จาก ONNX metadata ก่อน แล้วค่อยใช้ labels.txt ข้างโมเดล',
+      'labels_override_desc':
+          'ไฟล์ labels ทางเลือก สำหรับใช้แทนการตรวจจับอัตโนมัติ',
       'select_labels_btn': 'เลือก labels',
       'max_fps_desc': 'อัตราประมวลผลสูงสุดต่อวินาที',
       'input_size_desc': 'ขนาดภาพสี่เหลี่ยมที่ส่งเข้าโมเดล AI',
-      'err_no_metadata_labels': 'auto detect อ่าน class จาก metadata ไม่ได้',
+      'err_no_metadata_labels':
+          'auto detect: ถ้า ONNX ไม่มี class name ให้เพิ่ม labels.txt',
       'no_loaded_classes': 'ยังไม่มี class ที่ backend โหลดได้จาก {source}',
       'loaded_from_source': 'จาก {source}',
       'close': 'ปิด',

@@ -80,11 +80,13 @@ class _NativePreviewPaneState extends State<NativePreviewPane> {
         children: [
           if (isLoading)
             const SizedBox(
-              width: 28,
-              height: 28,
-              child: CircularProgressIndicator(
-                strokeWidth: 2.5,
+              width: 72,
+              height: 6,
+              child: LinearProgressIndicator(
+                minHeight: 6,
                 color: Colors.white70,
+                backgroundColor: Colors.white24,
+                borderRadius: BorderRadius.all(Radius.circular(4)),
               ),
             )
           else
@@ -150,7 +152,7 @@ class _NativePreviewPaneState extends State<NativePreviewPane> {
       child: AspectRatio(
         aspectRatio: widget.aspectRatio,
         child: ClipRRect(
-          borderRadius: BorderRadius.circular(16),
+          borderRadius: BeenutTheme.radiusPanel,
           child: ColoredBox(
             color: BeenutTheme.previewBlack,
             child: Stack(
@@ -169,7 +171,7 @@ class _NativePreviewPaneState extends State<NativePreviewPane> {
                 // 3. Status text overlays
                 if (widget.state.previewPaused)
                   _buildOverlay(
-                    icon: Icons.pause_circle_outline,
+                    icon: Icons.pause_outlined,
                     iconColor: Colors.white,
                     title: I18n.t(context, 'suspended'),
                     subtitle: I18n.t(context, 'video_paused_save_power'),
@@ -451,11 +453,13 @@ class _MjpegStatus extends StatelessWidget {
         mainAxisSize: MainAxisSize.min,
         children: [
           const SizedBox(
-            width: 28,
-            height: 28,
-            child: CircularProgressIndicator(
-              strokeWidth: 2.5,
+            width: 72,
+            height: 6,
+            child: LinearProgressIndicator(
+              minHeight: 6,
               color: Colors.white70,
+              backgroundColor: Colors.white24,
+              borderRadius: BorderRadius.all(Radius.circular(4)),
             ),
           ),
           const SizedBox(height: 12),
@@ -794,7 +798,7 @@ class _AnimatedDetectionsPainter extends CustomPainter {
     );
 
     canvas.drawRRect(
-      RRect.fromRectAndRadius(rect, const Radius.circular(6)),
+      RRect.fromRectAndRadius(rect, const Radius.circular(2)),
       boxPaint,
     );
 
@@ -848,7 +852,7 @@ class _AnimatedDetectionsPainter extends CustomPainter {
       )
       ..style = PaintingStyle.fill;
     canvas.drawRRect(
-      RRect.fromRectAndRadius(labelRect, const Radius.circular(6)),
+      RRect.fromRectAndRadius(labelRect, const Radius.circular(3)),
       backgroundPaint,
     );
     textPainter.paint(

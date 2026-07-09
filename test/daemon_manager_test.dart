@@ -97,35 +97,27 @@ void main() {
     );
   });
 
-  test('model config keeps selected bundled model instead of defaulting', () {
+  test('model config resolves selected relative model and labels paths', () {
     final tempDir = Directory.systemTemp.createTempSync('beenut-model-test-');
     addTearDown(() => tempDir.deleteSync(recursive: true));
 
-    final pillsModel = File(
-      '${tempDir.path}/assets/service/models/pills_detection/pills_detection.onnx',
-    )..createSync(recursive: true);
-    final pillsLabels = File(
-      '${tempDir.path}/assets/service/models/pills_detection/labels.txt',
-    )..createSync(recursive: true);
-    File(
-      '${tempDir.path}/assets/service/models/yolo26n/yolo26n.onnx',
-    ).createSync(recursive: true);
-    File(
-      '${tempDir.path}/assets/service/models/yolo26n/labels.txt',
-    ).createSync(recursive: true);
+    final modelFile = File('${tempDir.path}/assets/models/yolo.onnx')
+      ..createSync(recursive: true);
+    final labelsFile = File('${tempDir.path}/assets/models/labels.txt')
+      ..createSync(recursive: true);
 
     final resolved = DaemonManager.resolveDaemonModelConfig(
       modelConfig: {
         'engine': 'onnx',
-        'model_path': 'service/models/pills_detection/pills_detection.onnx',
-        'labels_path': 'service/models/pills_detection/labels.txt',
+        'model_path': 'models/yolo.onnx',
+        'labels_path': 'models/labels.txt',
       },
       assetsPath: '${tempDir.path}/assets',
       currentDirectoryPath: tempDir.path,
     );
 
-    expect(resolved['model_path'], pillsModel.path);
-    expect(resolved['labels_path'], pillsLabels.path);
+    expect(resolved['model_path'], modelFile.path);
+    expect(resolved['labels_path'], labelsFile.path);
   });
 
   test('model config keeps absolute custom model paths', () {
@@ -136,13 +128,6 @@ void main() {
       ..createSync(recursive: true);
     final customLabels = File('${tempDir.path}/custom/labels.txt')
       ..createSync(recursive: true);
-    File(
-      '${tempDir.path}/assets/service/models/yolo26n/yolo26n.onnx',
-    ).createSync(recursive: true);
-    File(
-      '${tempDir.path}/assets/service/models/yolo26n/labels.txt',
-    ).createSync(recursive: true);
-
     final resolved = DaemonManager.resolveDaemonModelConfig(
       modelConfig: {
         'model_path': customModel.path,
@@ -156,30 +141,37 @@ void main() {
     expect(resolved['labels_path'], customLabels.path);
   });
 
+  test('model config preserves missing model paths for backend validation', () {
+    final tempDir = Directory.systemTemp.createTempSync('beenut-model-test-');
+    addTearDown(() => tempDir.deleteSync(recursive: true));
+
+    final resolved = DaemonManager.resolveDaemonModelConfig(
+      modelConfig: {
+        'model_path': '${tempDir.path}/missing/pills.onnx',
+        'labels_path': '${tempDir.path}/missing/labels.txt',
+      },
+      assetsPath: '${tempDir.path}/assets',
+      currentDirectoryPath: tempDir.path,
+    );
+
+    expect(resolved['model_path'], '${tempDir.path}/missing/pills.onnx');
+    expect(resolved['labels_path'], '${tempDir.path}/missing/labels.txt');
+  });
+
   test(
-    'model config falls back to bundled default when selected model is gone',
+    'empty model config stays empty instead of selecting a bundled model',
     () {
       final tempDir = Directory.systemTemp.createTempSync('beenut-model-test-');
       addTearDown(() => tempDir.deleteSync(recursive: true));
 
-      final defaultModel = File(
-        '${tempDir.path}/assets/service/models/yolo26n/yolo26n.onnx',
-      )..createSync(recursive: true);
-      final defaultLabels = File(
-        '${tempDir.path}/assets/service/models/yolo26n/labels.txt',
-      )..createSync(recursive: true);
-
       final resolved = DaemonManager.resolveDaemonModelConfig(
-        modelConfig: {
-          'model_path': '${tempDir.path}/missing/pills.onnx',
-          'labels_path': '${tempDir.path}/missing/labels.txt',
-        },
+        modelConfig: const {},
         assetsPath: '${tempDir.path}/assets',
         currentDirectoryPath: tempDir.path,
       );
 
-      expect(resolved['model_path'], defaultModel.path);
-      expect(resolved['labels_path'], defaultLabels.path);
+      expect(resolved['model_path'], '');
+      expect(resolved['labels_path'], '');
     },
   );
 }

@@ -106,9 +106,6 @@ AppConfig parseConfig(const QJsonObject& root, AppConfig config)
     const auto model = migratedRoot.value("model").toObject();
     config.model.engine = str(model, "engine", config.model.engine);
     config.model.modelPath = str(model, "model_path", config.model.modelPath);
-    if (config.model.modelPath.isEmpty()) {
-        config.model.modelPath = "service/models/yolo26n/yolo26n.onnx";
-    }
     config.model.labelsMode = str(model, "labels_mode", config.model.labelsMode);
     if (config.model.labelsMode != "custom") {
         config.model.labelsMode = "auto";
@@ -267,6 +264,13 @@ QString resolvedLabelsPath(const ModelConfig& model)
 {
     if (model.labelsMode == "custom") {
         return model.labelsPath;
+    }
+    if (!model.labelsPath.trimmed().isEmpty()) {
+        return model.labelsPath;
+    }
+    const QFileInfo modelFile(model.modelPath);
+    if (!modelFile.absolutePath().isEmpty()) {
+        return QDir(modelFile.absolutePath()).filePath("labels.txt");
     }
     return {};
 }

@@ -448,7 +448,7 @@ class _ClassChip extends StatelessWidget {
         border: Border.all(
           color: onTap == null ? scheme.outlineVariant : scheme.tertiary,
         ),
-        borderRadius: BorderRadius.circular(999),
+        borderRadius: BorderRadius.all(Radius.circular(4)),
       ),
       child: Text(
         label,
@@ -465,7 +465,7 @@ class _ClassChip extends StatelessWidget {
     );
     if (onTap == null) return chip;
     return InkWell(
-      borderRadius: BorderRadius.circular(999),
+      borderRadius: BorderRadius.all(Radius.circular(4)),
       onTap: onTap,
       child: chip,
     );

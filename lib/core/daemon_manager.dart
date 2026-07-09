@@ -378,83 +378,24 @@ class DaemonManager {
     required String assetsPath,
     required String currentDirectoryPath,
   }) {
-    final defaultModelPath = _resolveBundledAssetPath(
-      assetsPath,
-      'service/models/yolo26n/yolo26n.onnx',
-      currentDirectoryPath,
+    final model = Map<String, dynamic>.from(
+      (modelConfig as Map?)?.cast<String, dynamic>() ?? <String, dynamic>{},
     );
-    final defaultLabelsPath = _resolveBundledAssetPath(
-      assetsPath,
-      'service/models/yolo26n/labels.txt',
-      currentDirectoryPath,
-    );
-
-    final model =
-        (modelConfig as Map?)?.cast<String, dynamic>() ?? <String, dynamic>{};
-    model['model_path'] = _resolveConfiguredModelPath(
-      model['model_path'],
-      assetsPath: assetsPath,
-      currentDirectoryPath: currentDirectoryPath,
-      fallbackPath: defaultModelPath,
-    );
-    model['labels_path'] = _resolveConfiguredLabelsPath(
-      model['labels_path'],
-      assetsPath: assetsPath,
-      currentDirectoryPath: currentDirectoryPath,
-      fallbackPath: defaultLabelsPath,
-      labelsMode: '${model['labels_mode'] ?? 'auto'}',
-    );
+    model['model_path'] =
+        _resolveConfiguredAssetPath(
+          model['model_path'],
+          assetsPath,
+          currentDirectoryPath,
+        ) ??
+        '';
+    model['labels_path'] =
+        _resolveConfiguredAssetPath(
+          model['labels_path'],
+          assetsPath,
+          currentDirectoryPath,
+        ) ??
+        '';
     return model;
-  }
-
-  static String _resolveBundledAssetPath(
-    String assetsPath,
-    String relativePath,
-    String currentDirectoryPath,
-  ) {
-    final assetPath = '$assetsPath/$relativePath';
-    if (File(assetPath).existsSync()) {
-      return assetPath;
-    }
-    return '$currentDirectoryPath/$relativePath';
-  }
-
-  static String _resolveConfiguredModelPath(
-    Object? configuredPath, {
-    required String assetsPath,
-    required String currentDirectoryPath,
-    required String fallbackPath,
-  }) {
-    final resolved = _resolveConfiguredAssetPath(
-      configuredPath,
-      assetsPath,
-      currentDirectoryPath,
-    );
-    if (resolved != null && File(resolved).existsSync()) {
-      return resolved;
-    }
-    return fallbackPath;
-  }
-
-  static String _resolveConfiguredLabelsPath(
-    Object? configuredPath, {
-    required String assetsPath,
-    required String currentDirectoryPath,
-    required String fallbackPath,
-    required String labelsMode,
-  }) {
-    final resolved = _resolveConfiguredAssetPath(
-      configuredPath,
-      assetsPath,
-      currentDirectoryPath,
-    );
-    if (resolved != null && File(resolved).existsSync()) {
-      return resolved;
-    }
-    if (labelsMode == 'custom' && resolved != null && resolved.isNotEmpty) {
-      return resolved;
-    }
-    return fallbackPath;
   }
 
   static String? _resolveConfiguredAssetPath(

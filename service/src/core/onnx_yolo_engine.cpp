@@ -213,6 +213,11 @@ bool OnnxYoloEngine::reload(ModelConfig config)
         return false;
     }
 
+    if (config_.modelPath.trimmed().isEmpty()) {
+        detail_ = "No ONNX model selected";
+        return false;
+    }
+
     const QFileInfo model(config_.modelPath);
     if (!model.exists()) {
         detail_ = QString("ONNX model missing: %1").arg(config_.modelPath);
@@ -243,9 +248,14 @@ bool OnnxYoloEngine::reload(ModelConfig config)
             batchSize_ = 1;
         }
 
+        QString labelSource;
         if (config_.labelsMode == "auto") {
             labels_ = labelsFromMetadata(*session_);
-        } else {
+            if (!labels_.isEmpty()) {
+                labelSource = "ONNX metadata";
+            }
+        }
+        if (labels_.isEmpty()) {
             const auto labelsPath = resolvedLabelsPath(config_);
             QFile labelsFile(labelsPath);
             if (labelsFile.open(QIODevice::ReadOnly | QIODevice::Text)) {
@@ -255,15 +265,23 @@ bool OnnxYoloEngine::reload(ModelConfig config)
                         labels_.append(label);
                     }
                 }
+                if (!labels_.isEmpty()) {
+                    labelSource = config_.labelsMode == "custom"
+                        ? "custom labels file"
+                        : QString("labels.txt next to model");
+                }
             }
+        }
+        if (labelSource.isEmpty()) {
+            labelSource = config_.labelsMode == "custom"
+                ? "custom labels unavailable"
+                : "auto labels unavailable";
         }
         ready_ = true;
         detail_ = QString("ONNX Runtime ready: %1 · %2 labels · %3")
                       .arg(model.fileName())
                       .arg(labels_.size())
-                      .arg(config_.labelsMode == "auto"
-                               ? (labels_.isEmpty() ? "auto labels unavailable" : "auto labels from model metadata")
-                               : "custom labels file");
+                      .arg(labelSource);
         if (!runtimeNotes_.isEmpty()) {
             detail_.append(QString(" · %1").arg(runtimeNotes_.join(" · ")));
         }

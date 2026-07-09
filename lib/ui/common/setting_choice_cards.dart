@@ -47,17 +47,20 @@ class ChoiceCardsRow extends StatelessWidget {
                   color: option.value == value
                       ? scheme.primaryContainer.withValues(alpha: 0.25)
                       : scheme.surfaceContainerLow,
-                  borderRadius: BorderRadius.circular(16),
+                  borderRadius: BorderRadius.all(Radius.circular(4)),
                   clipBehavior: Clip.antiAlias,
                   child: InkWell(
                     onTap: enabled && option.available
                         ? () => onSelected(option.value)
                         : null,
-                    borderRadius: BorderRadius.circular(16),
+                    borderRadius: BorderRadius.all(Radius.circular(4)),
                     child: Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 16,
+                        vertical: 14,
+                      ),
                       decoration: BoxDecoration(
-                        borderRadius: BorderRadius.circular(16),
+                        borderRadius: BorderRadius.all(Radius.circular(4)),
                         border: Border.all(
                           color: option.value == value
                               ? scheme.primary
@@ -75,7 +78,9 @@ class ChoiceCardsRow extends StatelessWidget {
                                 ? scheme.primary
                                 : (option.available
                                       ? scheme.onSurfaceVariant
-                                      : scheme.onSurfaceVariant.withValues(alpha: 0.5)),
+                                      : scheme.onSurfaceVariant.withValues(
+                                          alpha: 0.5,
+                                        )),
                           ),
                           const SizedBox(height: 10),
                           Text(

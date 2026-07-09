@@ -48,7 +48,9 @@ class _PartSelectorState extends State<PartSelector> {
           onOpen: () => widget.onMenuStateChanged?.call(true),
           onClose: () => widget.onMenuStateChanged?.call(false),
           style: MenuStyle(
-            backgroundColor: WidgetStatePropertyAll(scheme.surfaceContainerHigh),
+            backgroundColor: WidgetStatePropertyAll(
+              scheme.surfaceContainerHigh,
+            ),
             surfaceTintColor: WidgetStatePropertyAll(Colors.transparent),
             elevation: const WidgetStatePropertyAll(2),
             shadowColor: WidgetStatePropertyAll(
@@ -56,17 +58,17 @@ class _PartSelectorState extends State<PartSelector> {
             ),
             shape: WidgetStatePropertyAll(
               RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(12),
+                borderRadius: BeenutTheme.radiusPanel,
                 side: BorderSide(color: BeenutTheme.outlineVariant(context)),
               ),
             ),
-            minimumSize: WidgetStatePropertyAll(
-              Size(constraints.maxWidth, 0),
-            ),
+            minimumSize: WidgetStatePropertyAll(Size(constraints.maxWidth, 0)),
             maximumSize: WidgetStatePropertyAll(
               Size(constraints.maxWidth, double.infinity),
             ),
-            padding: const WidgetStatePropertyAll(EdgeInsets.symmetric(vertical: 4)),
+            padding: const WidgetStatePropertyAll(
+              EdgeInsets.symmetric(vertical: 4),
+            ),
           ),
           menuChildren: [
             for (final part in widget.parts)
@@ -76,12 +78,18 @@ class _PartSelectorState extends State<PartSelector> {
                   _menuController.close();
                 },
                 style: ButtonStyle(
-                  minimumSize: WidgetStatePropertyAll(Size(constraints.maxWidth, 48)),
+                  minimumSize: WidgetStatePropertyAll(
+                    Size(constraints.maxWidth, 48),
+                  ),
                   padding: const WidgetStatePropertyAll(
                     EdgeInsets.symmetric(horizontal: 12),
                   ),
                   alignment: Alignment.centerLeft,
-                  shape: const WidgetStatePropertyAll(RoundedRectangleBorder()),
+                  shape: const WidgetStatePropertyAll(
+                    RoundedRectangleBorder(
+                      borderRadius: BorderRadius.all(Radius.circular(4)),
+                    ),
+                  ),
                 ),
                 leadingIcon: Container(
                   width: 32,
@@ -92,14 +100,21 @@ class _PartSelectorState extends State<PartSelector> {
                     border: Border.all(
                       color: BeenutTheme.outlineVariant(context),
                     ),
-                    borderRadius: BorderRadius.circular(8),
+                    borderRadius: BeenutTheme.radiusSharp,
                   ),
                   child: part.image.isEmpty
-                      ? Icon(Icons.hexagon_outlined, size: 14, color: scheme.onSurfaceVariant)
+                      ? Icon(
+                          Icons.hexagon_outlined,
+                          size: 14,
+                          color: scheme.onSurfaceVariant,
+                        )
                       : Image.file(
                           File(part.image),
-                          errorBuilder: (_, _, _) =>
-                              Icon(Icons.hexagon_outlined, size: 14, color: scheme.onSurfaceVariant),
+                          errorBuilder: (_, _, _) => Icon(
+                            Icons.hexagon_outlined,
+                            size: 14,
+                            color: scheme.onSurfaceVariant,
+                          ),
                         ),
                 ),
                 child: Text(
@@ -123,13 +138,18 @@ class _PartSelectorState extends State<PartSelector> {
                   _menuController.open();
                 }
               },
-              borderRadius: BorderRadius.circular(16),
+              borderRadius: BeenutTheme.radiusPanel,
               child: Container(
-                padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 16,
+                  vertical: 12,
+                ),
                 decoration: BoxDecoration(
-                  color: scheme.surfaceContainerLow,
-                  border: Border.all(color: BeenutTheme.outlineVariant(context)),
-                  borderRadius: BorderRadius.circular(16),
+                  color: scheme.surfaceContainer,
+                  border: Border.all(
+                    color: BeenutTheme.outlineVariant(context),
+                  ),
+                  borderRadius: BeenutTheme.radiusPanel,
                 ),
                 child: Row(
                   children: [
@@ -140,7 +160,7 @@ class _PartSelectorState extends State<PartSelector> {
                       padding: const EdgeInsets.all(3),
                       decoration: BoxDecoration(
                         color: scheme.secondaryContainer,
-                        borderRadius: BorderRadius.circular(12),
+                        borderRadius: BeenutTheme.radiusSharp,
                       ),
                       child: selectedPart.image.isEmpty
                           ? Icon(

@@ -15,7 +15,7 @@ class SettingIcon extends StatelessWidget {
       height: 28,
       decoration: BoxDecoration(
         color: color.withValues(alpha: 0.12),
-        borderRadius: BorderRadius.circular(8),
+        borderRadius: BeenutTheme.radiusSharp,
       ),
       child: Icon(icon, color: color, size: 17),
     );
@@ -37,8 +37,8 @@ class SelectorValue extends StatelessWidget {
       padding: const EdgeInsets.symmetric(horizontal: 12),
       decoration: BoxDecoration(
         color: scheme.surfaceContainerHigh,
-        border: Border.all(color: scheme.outlineVariant.withValues(alpha: 0.3)),
-        borderRadius: BorderRadius.circular(8),
+        border: Border.all(color: scheme.outlineVariant),
+        borderRadius: BeenutTheme.radiusSharp,
       ),
       child: Row(
         mainAxisAlignment: MainAxisAlignment.spaceBetween,
@@ -89,8 +89,8 @@ class StepperControl extends StatelessWidget {
       height: 32,
       decoration: BoxDecoration(
         color: scheme.surfaceContainerHigh,
-        border: Border.all(color: scheme.outlineVariant.withValues(alpha: 0.3)),
-        borderRadius: BorderRadius.circular(8),
+        border: Border.all(color: scheme.outlineVariant),
+        borderRadius: BeenutTheme.radiusSharp,
       ),
       child: Row(
         mainAxisSize: MainAxisSize.min,
@@ -98,10 +98,7 @@ class StepperControl extends StatelessWidget {
           _StepperButton(
             enabled: enabled,
             icon: Icons.remove,
-            borderRadius: const BorderRadius.only(
-              topLeft: Radius.circular(7),
-              bottomLeft: Radius.circular(7),
-            ),
+            borderRadius: BeenutTheme.radiusSharp,
             onTap: onDecrement,
           ),
           Container(
@@ -131,10 +128,7 @@ class StepperControl extends StatelessWidget {
           _StepperButton(
             enabled: enabled,
             icon: Icons.add,
-            borderRadius: const BorderRadius.only(
-              topRight: Radius.circular(7),
-              bottomRight: Radius.circular(7),
-            ),
+            borderRadius: BeenutTheme.radiusSharp,
             onTap: onIncrement,
           ),
         ],

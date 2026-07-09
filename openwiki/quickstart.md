@@ -51,7 +51,7 @@ To fully understand and navigate this repository, please start on this landing p
     *   Learn how the native daemon processes GStreamer pipelines and pipes video frame sequences with zero-copy using macOS `IOSurface`, Linux Shared Memory, and DRM/KMS `DMA-BUF`.
     *   Examine Unix-domain Socket JSON-Lines streams (`/lib/core/service_protocol.dart` & `/service/src/core/control_server.cpp`).
 *   ⚙️ **[Domain Concepts & YOLO/AI Inference Engine](domain_concepts.md)**
-    *   Dive into YOLO26n NMS-free network execution, ONNX models, and bounding box mapping.
+    *   Dive into supported YOLO ONNX output formats, model labels, and bounding box mapping.
     *   Explore gated counting algorithms, noise filtering (median filters), parts catalogs, and tray detection state machines.
 *   🔌 **[Hardware & OS Integrations](integrations.md)**
     *   Understand real physical hardware versus mock execution on developer environments (Raspberry Pi `libgpiod` vs. CPU testing).

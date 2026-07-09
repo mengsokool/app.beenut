@@ -244,7 +244,10 @@ class _PartCatalogEditorState extends State<PartCatalogEditor> {
                 label: Text(I18n.t(context, 'add_target')),
                 style: FilledButton.styleFrom(
                   minimumSize: const Size(0, 36),
-                  padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 16,
+                    vertical: 8,
+                  ),
                   textStyle: const TextStyle(
                     fontFamily: BeenutTheme.fontFamily,
                     fontFamilyFallback: BeenutTheme.fontFamilyFallback,
@@ -252,7 +255,7 @@ class _PartCatalogEditorState extends State<PartCatalogEditor> {
                     fontWeight: FontWeight.w600,
                   ),
                   shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(18),
+                    borderRadius: BorderRadius.all(Radius.circular(4)),
                   ),
                 ),
               ),
@@ -267,7 +270,7 @@ class _PartCatalogEditorState extends State<PartCatalogEditor> {
               alignment: Alignment.center,
               decoration: BoxDecoration(
                 color: scheme.surfaceContainer,
-                borderRadius: BorderRadius.circular(16),
+                borderRadius: BorderRadius.all(Radius.circular(4)),
                 border: Border.all(
                   color: scheme.outlineVariant.withValues(alpha: 0.3),
                   style: BorderStyle.solid,
@@ -314,7 +317,7 @@ class _PartCatalogEditorState extends State<PartCatalogEditor> {
                                     vertical: 12,
                                   ),
                                   child: Icon(
-                                    Icons.drag_indicator_rounded,
+                                    Icons.drag_indicator,
                                     size: 16,
                                     color: scheme.onSurfaceVariant,
                                   ),
@@ -327,7 +330,7 @@ class _PartCatalogEditorState extends State<PartCatalogEditor> {
                                 vertical: 12,
                               ),
                               child: Icon(
-                                Icons.drag_indicator_rounded,
+                                Icons.drag_indicator,
                                 size: 16,
                                 color: scheme.outlineVariant,
                               ),
@@ -363,7 +366,7 @@ class _TargetCardRow extends StatelessWidget {
     return Material(
       color: scheme.surfaceContainer,
       shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(16),
+        borderRadius: BorderRadius.all(Radius.circular(4)),
         side: BorderSide(color: scheme.outlineVariant),
       ),
       clipBehavior: Clip.antiAlias,
@@ -380,7 +383,7 @@ class _TargetCardRow extends StatelessWidget {
             Expanded(
               child: InkWell(
                 onTap: onTap,
-                borderRadius: BorderRadius.circular(10),
+                borderRadius: BorderRadius.all(Radius.circular(4)),
                 child: Padding(
                   padding: const EdgeInsets.symmetric(vertical: 12),
                   child: Row(
@@ -392,7 +395,7 @@ class _TargetCardRow extends StatelessWidget {
                         decoration: BoxDecoration(
                           color: scheme.surfaceContainerLowest,
                           border: Border.all(color: scheme.outlineVariant),
-                          borderRadius: BorderRadius.circular(10),
+                          borderRadius: BorderRadius.all(Radius.circular(4)),
                         ),
                         padding: const EdgeInsets.all(4),
                         child: part.image.isEmpty
@@ -446,9 +449,13 @@ class _TargetCardRow extends StatelessWidget {
                                   decoration: BoxDecoration(
                                     color: scheme.surfaceContainerHighest,
                                     border: Border.all(
-                                      color: scheme.outlineVariant.withValues(alpha: 0.4),
+                                      color: scheme.outlineVariant.withValues(
+                                        alpha: 0.4,
+                                      ),
                                     ),
-                                    borderRadius: BorderRadius.circular(6),
+                                    borderRadius: BorderRadius.all(
+                                      Radius.circular(4),
+                                    ),
                                   ),
                                   child: Text(
                                     part.id,
@@ -476,7 +483,9 @@ class _TargetCardRow extends StatelessWidget {
                                       ),
                                       decoration: BoxDecoration(
                                         color: scheme.secondaryContainer,
-                                        borderRadius: BorderRadius.circular(6),
+                                        borderRadius: BorderRadius.all(
+                                          Radius.circular(4),
+                                        ),
                                       ),
                                       child: Text(
                                         keyword,

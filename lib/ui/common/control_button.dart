@@ -27,7 +27,9 @@ class ControlButton extends StatelessWidget {
         EdgeInsets.symmetric(horizontal: 10, vertical: 10),
       ),
       shape: WidgetStatePropertyAll(
-        RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+        RoundedRectangleBorder(
+          borderRadius: BorderRadius.all(Radius.circular(4)),
+        ),
       ),
       foregroundColor: danger ? WidgetStatePropertyAll(scheme.error) : null,
     );

@@ -124,10 +124,7 @@ class _BeenutFullscreenKeyboardState extends State<BeenutFullscreenKeyboard> {
     return Container(
       decoration: BoxDecoration(
         color: scheme.surfaceContainer,
-        borderRadius: const BorderRadius.only(
-          topLeft: Radius.circular(20),
-          topRight: Radius.circular(20),
-        ),
+        borderRadius: BorderRadius.all(Radius.circular(4)),
         boxShadow: [
           BoxShadow(
             color: scheme.shadow.withValues(alpha: 0.12),
@@ -162,7 +159,7 @@ class _BeenutFullscreenKeyboardState extends State<BeenutFullscreenKeyboard> {
               ),
               IconButton(
                 icon: Icon(
-                  Icons.close_rounded,
+                  Icons.close,
                   size: isSmallScreen ? 18 : 20,
                   color: BeenutTheme.mutedColor(context),
                 ),
@@ -183,7 +180,7 @@ class _BeenutFullscreenKeyboardState extends State<BeenutFullscreenKeyboard> {
             ),
             decoration: BoxDecoration(
               color: scheme.surfaceContainerLowest,
-              borderRadius: BorderRadius.circular(10),
+              borderRadius: BorderRadius.all(Radius.circular(4)),
               border: Border.all(color: scheme.outlineVariant, width: 1.5),
             ),
             child: Row(
@@ -212,7 +209,7 @@ class _BeenutFullscreenKeyboardState extends State<BeenutFullscreenKeyboard> {
                 if (_textController.text.isNotEmpty)
                   IconButton(
                     icon: Icon(
-                      Icons.clear_rounded,
+                      Icons.clear,
                       size: 20,
                       color: BeenutTheme.mutedColor(context),
                     ),
@@ -322,7 +319,7 @@ class _BeenutFullscreenKeyboardState extends State<BeenutFullscreenKeyboard> {
         child: Material(
           color: scheme.surfaceContainerLowest,
           shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(6),
+            borderRadius: BorderRadius.all(Radius.circular(4)),
             side: BorderSide(color: scheme.outlineVariant),
           ),
           child: InkWell(
@@ -334,7 +331,7 @@ class _BeenutFullscreenKeyboardState extends State<BeenutFullscreenKeyboard> {
                 });
               }
             },
-            borderRadius: BorderRadius.circular(6),
+            borderRadius: BorderRadius.all(Radius.circular(4)),
             child: Center(
               child: Text(
                 label,
@@ -369,10 +366,10 @@ class _BeenutFullscreenKeyboardState extends State<BeenutFullscreenKeyboard> {
             (isPressed
                 ? scheme.secondaryContainer
                 : scheme.surfaceContainerHighest),
-        borderRadius: BorderRadius.circular(6),
+        borderRadius: BorderRadius.all(Radius.circular(4)),
         child: InkWell(
           onTap: onTap,
-          borderRadius: BorderRadius.circular(6),
+          borderRadius: BorderRadius.all(Radius.circular(4)),
           child: Center(
             child: Row(
               mainAxisAlignment: MainAxisAlignment.center,

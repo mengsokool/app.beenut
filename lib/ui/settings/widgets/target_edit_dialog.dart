@@ -114,7 +114,7 @@ class _TargetEditDialogState extends State<TargetEditDialog> {
           ),
           decoration: BoxDecoration(
             color: scheme.surfaceContainer,
-            borderRadius: BorderRadius.circular(20),
+            borderRadius: BorderRadius.all(Radius.circular(4)),
             boxShadow: [
               BoxShadow(
                 color: Colors.black.withValues(alpha: 0.24),
@@ -122,7 +122,9 @@ class _TargetEditDialogState extends State<TargetEditDialog> {
                 offset: const Offset(0, 12),
               ),
             ],
-            border: Border.all(color: scheme.outlineVariant.withValues(alpha: 0.3)),
+            border: Border.all(
+              color: scheme.outlineVariant.withValues(alpha: 0.3),
+            ),
           ),
           child: Column(
             mainAxisSize: MainAxisSize.min,
@@ -151,17 +153,22 @@ class _TargetEditDialogState extends State<TargetEditDialog> {
                       style: IconButton.styleFrom(
                         padding: EdgeInsets.zero,
                         minimumSize: const Size(32, 32),
-                        side: BorderSide(color: scheme.outlineVariant.withValues(alpha: 0.4)),
+                        side: BorderSide(
+                          color: scheme.outlineVariant.withValues(alpha: 0.4),
+                        ),
                         backgroundColor: scheme.surfaceContainerHigh,
                         shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(16),
+                          borderRadius: BorderRadius.all(Radius.circular(4)),
                         ),
                       ),
                     ),
                   ],
                 ),
               ),
-              Divider(height: 1, color: scheme.outlineVariant.withValues(alpha: 0.3)),
+              Divider(
+                height: 1,
+                color: scheme.outlineVariant.withValues(alpha: 0.3),
+              ),
 
               // Form content
               Flexible(
@@ -190,21 +197,41 @@ class _TargetEditDialogState extends State<TargetEditDialog> {
                             style: const TextStyle(fontSize: 13),
                             decoration: InputDecoration(
                               isDense: true,
-                              contentPadding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+                              contentPadding: const EdgeInsets.symmetric(
+                                horizontal: 14,
+                                vertical: 12,
+                              ),
                               hintText: I18n.t(context, 'enter_target_name'),
                               filled: true,
                               fillColor: scheme.surfaceContainerHigh,
                               border: OutlineInputBorder(
-                                borderRadius: BorderRadius.circular(12),
-                                borderSide: BorderSide(color: scheme.outlineVariant.withValues(alpha: 0.4)),
+                                borderRadius: BorderRadius.all(
+                                  Radius.circular(4),
+                                ),
+                                borderSide: BorderSide(
+                                  color: scheme.outlineVariant.withValues(
+                                    alpha: 0.4,
+                                  ),
+                                ),
                               ),
                               enabledBorder: OutlineInputBorder(
-                                borderRadius: BorderRadius.circular(12),
-                                borderSide: BorderSide(color: scheme.outlineVariant.withValues(alpha: 0.4)),
+                                borderRadius: BorderRadius.all(
+                                  Radius.circular(4),
+                                ),
+                                borderSide: BorderSide(
+                                  color: scheme.outlineVariant.withValues(
+                                    alpha: 0.4,
+                                  ),
+                                ),
                               ),
                               focusedBorder: OutlineInputBorder(
-                                borderRadius: BorderRadius.circular(12),
-                                borderSide: BorderSide(color: scheme.primary, width: 1.5),
+                                borderRadius: BorderRadius.all(
+                                  Radius.circular(4),
+                                ),
+                                borderSide: BorderSide(
+                                  color: scheme.primary,
+                                  width: 1.5,
+                                ),
                               ),
                             ),
                           ),
@@ -222,9 +249,15 @@ class _TargetEditDialogState extends State<TargetEditDialog> {
                             style: IconButton.styleFrom(
                               backgroundColor: scheme.surfaceContainerHigh,
                               shape: RoundedRectangleBorder(
-                                borderRadius: BorderRadius.circular(12),
+                                borderRadius: BorderRadius.all(
+                                  Radius.circular(4),
+                                ),
                               ),
-                              side: BorderSide(color: scheme.outlineVariant.withValues(alpha: 0.4)),
+                              side: BorderSide(
+                                color: scheme.outlineVariant.withValues(
+                                  alpha: 0.4,
+                                ),
+                              ),
                               minimumSize: const Size(40, 40),
                               padding: EdgeInsets.zero,
                             ),
@@ -258,12 +291,16 @@ class _TargetEditDialogState extends State<TargetEditDialog> {
                             side: BorderSide(
                               color: imagePath.trim().isEmpty
                                   ? scheme.secondary
-                                  : scheme.outlineVariant.withValues(alpha: 0.4),
+                                  : scheme.outlineVariant.withValues(
+                                      alpha: 0.4,
+                                    ),
                             ),
                             minimumSize: const Size(0, 36),
                             padding: const EdgeInsets.symmetric(horizontal: 14),
                             shape: RoundedRectangleBorder(
-                              borderRadius: BorderRadius.circular(18),
+                              borderRadius: BorderRadius.all(
+                                Radius.circular(4),
+                              ),
                             ),
                           ),
                           icon: const Icon(Icons.hexagon_outlined, size: 16),
@@ -291,12 +328,16 @@ class _TargetEditDialogState extends State<TargetEditDialog> {
                             side: BorderSide(
                               color: imagePath.trim().isNotEmpty
                                   ? scheme.secondary
-                                  : scheme.outlineVariant.withValues(alpha: 0.4),
+                                  : scheme.outlineVariant.withValues(
+                                      alpha: 0.4,
+                                    ),
                             ),
                             minimumSize: const Size(0, 36),
                             padding: const EdgeInsets.symmetric(horizontal: 14),
                             shape: RoundedRectangleBorder(
-                              borderRadius: BorderRadius.circular(18),
+                              borderRadius: BorderRadius.all(
+                                Radius.circular(4),
+                              ),
                             ),
                           ),
                           icon: const Icon(Icons.image_outlined, size: 16),
@@ -333,17 +374,23 @@ class _TargetEditDialogState extends State<TargetEditDialog> {
                         const SizedBox(width: 12),
                         OutlinedButton.icon(
                           onPressed: _openImagePicker,
-                          icon: const Icon(Icons.folder_open_outlined, size: 14),
+                          icon: const Icon(
+                            Icons.folder_open_outlined,
+                            size: 14,
+                          ),
                           label: Text(I18n.t(context, 'browse')),
                           style: OutlinedButton.styleFrom(
                             minimumSize: const Size(0, 32),
                             padding: const EdgeInsets.symmetric(horizontal: 12),
                             shape: RoundedRectangleBorder(
-                              borderRadius: BorderRadius.circular(16),
+                              borderRadius: BorderRadius.all(
+                                Radius.circular(4),
+                              ),
                             ),
                             textStyle: const TextStyle(
                               fontFamily: BeenutTheme.fontFamily,
-                              fontFamilyFallback: BeenutTheme.fontFamilyFallback,
+                              fontFamilyFallback:
+                                  BeenutTheme.fontFamilyFallback,
                               fontSize: 11,
                               fontWeight: FontWeight.w600,
                             ),
@@ -385,7 +432,9 @@ class _TargetEditDialogState extends State<TargetEditDialog> {
                               selected: keywords.contains(label),
                               onSelected: (_) => _toggleKeyword(label),
                               shape: RoundedRectangleBorder(
-                                borderRadius: BorderRadius.circular(8),
+                                borderRadius: BorderRadius.all(
+                                  Radius.circular(4),
+                                ),
                               ),
                               padding: const EdgeInsets.symmetric(
                                 horizontal: 8,
@@ -417,7 +466,10 @@ class _TargetEditDialogState extends State<TargetEditDialog> {
                   ],
                 ),
               ),
-              Divider(height: 1, color: scheme.outlineVariant.withValues(alpha: 0.3)),
+              Divider(
+                height: 1,
+                color: scheme.outlineVariant.withValues(alpha: 0.3),
+              ),
 
               // Footer actions
               Padding(
@@ -450,12 +502,15 @@ class _TargetEditDialogState extends State<TargetEditDialog> {
                         minimumSize: const Size(0, 36),
                         padding: const EdgeInsets.symmetric(horizontal: 16),
                         shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(18),
+                          borderRadius: BorderRadius.all(Radius.circular(4)),
                         ),
                       ),
                       child: Text(
                         I18n.t(context, 'cancel'),
-                        style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 12),
+                        style: const TextStyle(
+                          fontWeight: FontWeight.w600,
+                          fontSize: 12,
+                        ),
                       ),
                     ),
                     const SizedBox(width: 8),
@@ -465,12 +520,15 @@ class _TargetEditDialogState extends State<TargetEditDialog> {
                         minimumSize: const Size(0, 36),
                         padding: const EdgeInsets.symmetric(horizontal: 16),
                         shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(18),
+                          borderRadius: BorderRadius.all(Radius.circular(4)),
                         ),
                       ),
                       child: Text(
                         I18n.t(context, 'save_btn'),
-                        style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 12),
+                        style: const TextStyle(
+                          fontWeight: FontWeight.w600,
+                          fontSize: 12,
+                        ),
                       ),
                     ),
                   ],

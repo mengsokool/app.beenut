@@ -65,145 +65,180 @@ class _ResourceHistoryChartState extends State<ResourceHistoryChart> {
     final scheme = Theme.of(context).colorScheme;
     final daemonColor = scheme.primary;
     final flutterColor = scheme.tertiary;
-    return Column(
-      children: [
-        // 1. CPU Chart
-        Expanded(
-          child: Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.stretch,
-              children: [
-                Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                  children: [
-                    Text(
-                      'CPU Usage (%)',
-                      style: TextStyle(
-                        fontSize: 12.5,
-                        fontWeight: FontWeight.w600,
-                        color: BeenutTheme.inkColor(context),
-                      ),
-                    ),
-                    Wrap(
-                      spacing: 12,
-                      children: [
-                        _buildLegendItem(
-                          'Daemon',
-                          widget.daemonCpu,
-                          daemonColor,
-                        ),
-                        _buildLegendItem(
-                          'Flutter UI',
-                          widget.flutterCpu,
-                          flutterColor,
-                        ),
-                      ],
-                    ),
-                  ],
-                ),
-                const SizedBox(height: 12),
-                Expanded(
-                  child: CustomPaint(
-                    painter: _CpuChartPainter(
-                      daemonData: _daemonCpuHistory,
-                      flutterData: _flutterCpuHistory,
-                      maxPoints: widget.maxPoints,
-                      gridColor: scheme.outlineVariant,
-                      labelColor: scheme.onSurfaceVariant,
-                      daemonColor: daemonColor,
-                      flutterColor: flutterColor,
-                    ),
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        final compact = constraints.maxWidth < 620;
+        return Column(
+          children: [
+            Expanded(
+              child: _ChartPanel(
+                title: 'CPU Usage',
+                unitLabel: '%',
+                compact: compact,
+                chart: CustomPaint(
+                  painter: _CpuChartPainter(
+                    daemonData: _daemonCpuHistory,
+                    flutterData: _flutterCpuHistory,
+                    maxPoints: widget.maxPoints,
+                    gridColor: scheme.outlineVariant,
+                    labelColor: scheme.onSurfaceVariant,
+                    daemonColor: daemonColor,
+                    flutterColor: flutterColor,
                   ),
                 ),
-              ],
+                children: [
+                  _buildMetricBadge('Daemon', widget.daemonCpu, daemonColor),
+                  _buildMetricBadge(
+                    'Flutter UI',
+                    widget.flutterCpu,
+                    flutterColor,
+                  ),
+                ],
+              ),
             ),
-          ),
-        ),
-        Divider(height: 1, color: scheme.outlineVariant.withValues(alpha: 0.3)),
-        // 2. RAM Chart
-        Expanded(
-          child: Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.stretch,
-              children: [
-                Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                  children: [
-                    Text(
-                      'Memory Usage (MB)',
-                      style: TextStyle(
-                        fontSize: 12.5,
-                        fontWeight: FontWeight.w600,
-                        color: BeenutTheme.inkColor(context),
-                      ),
-                    ),
-                    Wrap(
-                      spacing: 12,
-                      children: [
-                        _buildLegendItem(
-                          'Daemon',
-                          widget.daemonRam,
-                          daemonColor,
-                          unit: ' MB',
-                        ),
-                        _buildLegendItem(
-                          'Flutter UI',
-                          widget.flutterRam,
-                          flutterColor,
-                          unit: ' MB',
-                        ),
-                      ],
-                    ),
-                  ],
-                ),
-                const SizedBox(height: 12),
-                Expanded(
-                  child: CustomPaint(
-                    painter: _RamChartPainter(
-                      daemonData: _daemonRamHistory,
-                      flutterData: _flutterRamHistory,
-                      maxPoints: widget.maxPoints,
-                      gridColor: scheme.outlineVariant,
-                      labelColor: scheme.onSurfaceVariant,
-                      daemonColor: daemonColor,
-                      flutterColor: flutterColor,
-                    ),
+            const SizedBox(height: 12),
+            Expanded(
+              child: _ChartPanel(
+                title: 'Memory Usage',
+                unitLabel: 'MB',
+                compact: compact,
+                chart: CustomPaint(
+                  painter: _RamChartPainter(
+                    daemonData: _daemonRamHistory,
+                    flutterData: _flutterRamHistory,
+                    maxPoints: widget.maxPoints,
+                    gridColor: scheme.outlineVariant,
+                    labelColor: scheme.onSurfaceVariant,
+                    daemonColor: daemonColor,
+                    flutterColor: flutterColor,
                   ),
                 ),
-              ],
+                children: [
+                  _buildMetricBadge(
+                    'Daemon',
+                    widget.daemonRam,
+                    daemonColor,
+                    unit: ' MB',
+                  ),
+                  _buildMetricBadge(
+                    'Flutter UI',
+                    widget.flutterRam,
+                    flutterColor,
+                    unit: ' MB',
+                  ),
+                ],
+              ),
             ),
-          ),
-        ),
-      ],
+          ],
+        );
+      },
     );
   }
 
-  Widget _buildLegendItem(
+  Widget _buildMetricBadge(
     String label,
     double value,
     Color color, {
     String unit = '%',
   }) {
-    return Row(
-      mainAxisSize: MainAxisSize.min,
-      children: [
-        Container(
-          width: 8,
-          height: 8,
-          decoration: BoxDecoration(color: color, shape: BoxShape.circle),
-        ),
-        const SizedBox(width: 4),
-        Text(
-          '$label: ${value.toStringAsFixed(1)}$unit',
-          style: TextStyle(
-            fontSize: 11,
-            fontWeight: FontWeight.w600,
-            color: BeenutTheme.inkColor(context),
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 5),
+      decoration: BoxDecoration(
+        color: color.withValues(alpha: 0.08),
+        border: Border.all(color: color.withValues(alpha: 0.18)),
+        borderRadius: BeenutTheme.radiusSharp,
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Container(
+            width: 8,
+            height: 8,
+            decoration: BoxDecoration(
+              color: color,
+              borderRadius: BeenutTheme.radiusSharp,
+            ),
           ),
+          const SizedBox(width: 6),
+          Text(
+            '$label ${value.toStringAsFixed(1)}$unit',
+            style: TextStyle(
+              fontSize: 11,
+              fontWeight: FontWeight.w800,
+              color: BeenutTheme.inkColor(context),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _ChartPanel extends StatelessWidget {
+  const _ChartPanel({
+    required this.title,
+    required this.unitLabel,
+    required this.compact,
+    required this.children,
+    required this.chart,
+  });
+
+  final String title;
+  final String unitLabel;
+  final bool compact;
+  final List<Widget> children;
+  final Widget chart;
+
+  @override
+  Widget build(BuildContext context) {
+    final scheme = Theme.of(context).colorScheme;
+    return DecoratedBox(
+      decoration: BoxDecoration(
+        color: scheme.surfaceContainerLow,
+        borderRadius: BeenutTheme.radiusPanel,
+        border: Border.all(color: scheme.outlineVariant),
+      ),
+      child: Padding(
+        padding: EdgeInsets.fromLTRB(14, compact ? 10 : 12, 10, 10),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            Wrap(
+              spacing: 8,
+              runSpacing: 6,
+              crossAxisAlignment: WrapCrossAlignment.center,
+              alignment: WrapAlignment.spaceBetween,
+              children: [
+                Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Text(
+                      title,
+                      style: TextStyle(
+                        fontSize: 13,
+                        fontWeight: FontWeight.w800,
+                        color: BeenutTheme.inkColor(context),
+                      ),
+                    ),
+                    const SizedBox(width: 6),
+                    Text(
+                      unitLabel,
+                      style: TextStyle(
+                        fontSize: 11,
+                        fontWeight: FontWeight.w700,
+                        color: scheme.onSurfaceVariant,
+                      ),
+                    ),
+                  ],
+                ),
+                Wrap(spacing: 6, runSpacing: 6, children: children),
+              ],
+            ),
+            const SizedBox(height: 10),
+            Expanded(child: chart),
+          ],
         ),
-      ],
+      ),
     );
   }
 }
@@ -231,7 +266,7 @@ class _CpuChartPainter extends CustomPainter {
   void paint(Canvas canvas, Size size) {
     final double width = size.width;
     final double height = size.height;
-    final double chartWidth = width - 44;
+    final double chartWidth = width;
 
     final gridPaint = Paint()
       ..color = gridColor.withValues(alpha: 0.4)
@@ -255,14 +290,17 @@ class _CpuChartPainter extends CustomPainter {
         text: TextSpan(text: '$pct%', style: textStyle),
         textDirection: TextDirection.ltr,
       )..layout();
-      
+
       double offsetY = y - textPainter.height / 2;
       if (i == 0) {
         offsetY = y - textPainter.height + 2;
       } else if (i == gridRows) {
         offsetY = y - 2;
       }
-      textPainter.paint(canvas, Offset(chartWidth + 8, offsetY));
+      textPainter.paint(
+        canvas,
+        Offset(chartWidth - textPainter.width - 4, offsetY),
+      );
     }
 
     _drawSeries(canvas, size, daemonData, daemonColor, 100.0, chartWidth);
@@ -280,13 +318,14 @@ class _CpuChartPainter extends CustomPainter {
     if (data.isEmpty) return;
 
     final double height = size.height;
-    final double stepX = chartWidth / (maxPoints - 1);
+    final int divisor = data.length > 1 ? data.length - 1 : 1;
+    final double stepX = chartWidth / divisor;
 
     final linePaint = Paint()
       ..color = color
       ..strokeWidth = 1.5
       ..style = PaintingStyle.stroke
-      ..strokeCap = StrokeCap.round
+      ..strokeCap = StrokeCap.square
       ..isAntiAlias = true;
 
     final fillPaint = Paint()
@@ -304,6 +343,16 @@ class _CpuChartPainter extends CustomPainter {
     path.moveTo(startX, startY);
     fillPath.moveTo(startX, height);
     fillPath.lineTo(startX, startY);
+
+    if (data.length == 1) {
+      path.lineTo(chartWidth, startY);
+      fillPath.lineTo(chartWidth, startY);
+      fillPath.lineTo(chartWidth, height);
+      fillPath.close();
+      canvas.drawPath(fillPath, fillPaint);
+      canvas.drawPath(path, linePaint);
+      return;
+    }
 
     for (int i = 1; i < data.length; i++) {
       final double x = i * stepX;
@@ -360,7 +409,7 @@ class _RamChartPainter extends CustomPainter {
   void paint(Canvas canvas, Size size) {
     final double width = size.width;
     final double height = size.height;
-    final double chartWidth = width - 44;
+    final double chartWidth = width;
 
     double maxVal = 100.0;
     for (final val in daemonData) {
@@ -400,7 +449,10 @@ class _RamChartPainter extends CustomPainter {
       } else if (i == gridRows) {
         offsetY = y - 2;
       }
-      textPainter.paint(canvas, Offset(chartWidth + 8, offsetY));
+      textPainter.paint(
+        canvas,
+        Offset(chartWidth - textPainter.width - 4, offsetY),
+      );
     }
 
     _drawSeries(canvas, size, daemonData, daemonColor, maxVal, chartWidth);
@@ -418,13 +470,14 @@ class _RamChartPainter extends CustomPainter {
     if (data.isEmpty) return;
 
     final double height = size.height;
-    final double stepX = chartWidth / (maxPoints - 1);
+    final int divisor = data.length > 1 ? data.length - 1 : 1;
+    final double stepX = chartWidth / divisor;
 
     final linePaint = Paint()
       ..color = color
       ..strokeWidth = 1.5
       ..style = PaintingStyle.stroke
-      ..strokeCap = StrokeCap.round
+      ..strokeCap = StrokeCap.square
       ..isAntiAlias = true;
 
     final fillPaint = Paint()
@@ -442,6 +495,16 @@ class _RamChartPainter extends CustomPainter {
     path.moveTo(startX, startY);
     fillPath.moveTo(startX, height);
     fillPath.lineTo(startX, startY);
+
+    if (data.length == 1) {
+      path.lineTo(chartWidth, startY);
+      fillPath.lineTo(chartWidth, startY);
+      fillPath.lineTo(chartWidth, height);
+      fillPath.close();
+      canvas.drawPath(fillPath, fillPaint);
+      canvas.drawPath(path, linePaint);
+      return;
+    }
 
     for (int i = 1; i < data.length; i++) {
       final double x = i * stepX;

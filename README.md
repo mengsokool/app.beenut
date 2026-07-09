@@ -25,7 +25,7 @@ BeeNut turns a desktop machine, Raspberry Pi, or SBC into a dedicated object-cou
 | --- | --- |
 | Operator UI | Touch-friendly Flutter kiosk, target selection, settings, diagnostics, and preview inspection. |
 | Native service | `beenutd` manages camera capture, preview transport, inference, counting, GPIO, and shutdown. |
-| Model runtime | YOLO ONNX models, labels, manifests, confidence thresholds, and hot-reloaded config. |
+| Model runtime | Bring-your-own YOLO ONNX models, optional labels files, confidence thresholds, and hot-reloaded config. |
 | Deployment | macOS app bundles, Linux `.deb` packages, Raspberry Pi appliance mode, and recovery tooling. |
 
 ## Highlights
@@ -102,13 +102,28 @@ Flutter UI
 
 ## Custom Models
 
-Place a YOLO ONNX model, `labels.txt`, and `manifest.json` under:
+BeeNut does not bundle sample model weights. Add your own YOLO ONNX model from settings or place it under:
 
 ```text
 service/models/<model-name>/
 ```
 
-Then select the model from BeeNut settings. The backend reloads compatible model and label configuration without rebuilding the app.
+Minimum:
+
+```text
+service/models/my-model/
+└─ yolo.onnx
+```
+
+Recommended when the ONNX file does not include class names:
+
+```text
+service/models/my-model/
+├─ yolo.onnx
+└─ labels.txt
+```
+
+BeeNut first reads class names from ONNX metadata. If none are available, it falls back to `labels.txt` next to the model. The backend reloads compatible model and label configuration without rebuilding the app.
 
 ## Build From Source
 

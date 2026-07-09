@@ -18,13 +18,13 @@ class SettingsGroup extends StatelessWidget {
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Padding(
-            padding: const EdgeInsets.only(left: 4, bottom: 6),
+            padding: const EdgeInsets.only(left: 2, bottom: 8),
             child: Text(
               title,
               style: TextStyle(
-                fontSize: 13.5,
-                fontWeight: FontWeight.w500,
-                color: scheme.onSurfaceVariant.withValues(alpha: 0.8),
+                fontSize: 15,
+                fontWeight: FontWeight.w700,
+                color: scheme.onSurfaceVariant,
               ),
             ),
           ),

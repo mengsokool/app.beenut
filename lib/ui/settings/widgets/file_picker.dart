@@ -150,10 +150,9 @@ class _FilePickerDialogState extends State<FilePickerDialog> {
   List<Map<String, String>> _getShortcuts() {
     final List<Map<String, String>> shortcuts = [];
 
-    // Bundled model root
-    final bundledPath = '${Directory.current.path}/service/models';
-    if (Directory(bundledPath).existsSync()) {
-      shortcuts.add({'label': 'Bundled Models', 'path': bundledPath});
+    final projectModelsPath = '${Directory.current.path}/service/models';
+    if (Directory(projectModelsPath).existsSync()) {
+      shortcuts.add({'label': 'Models', 'path': projectModelsPath});
     }
 
     // Project root
@@ -295,9 +294,29 @@ class _FilePickerDialogState extends State<FilePickerDialog> {
     final fileName = sourcePath.split(Platform.pathSeparator).last;
     final targetPath = '${targetDir.path}/$fileName';
 
-    // Copy file
     await sourceFile.copy(targetPath);
+    if (kind == 'model') {
+      await _copySiblingLabelsFile(sourceFile.parent, targetDir);
+    }
     return targetPath;
+  }
+
+  Future<void> _copySiblingLabelsFile(
+    Directory sourceDir,
+    Directory targetDir,
+  ) async {
+    const candidateNames = ['labels.txt', 'label.txt', 'classes.txt'];
+    for (final name in candidateNames) {
+      final labelsFile = File(
+        '${sourceDir.path}${Platform.pathSeparator}$name',
+      );
+      if (labelsFile.existsSync()) {
+        await labelsFile.copy(
+          '${targetDir.path}${Platform.pathSeparator}labels.txt',
+        );
+        return;
+      }
+    }
   }
 
   Future<String?> _showImportConfirmDialog(
@@ -424,7 +443,14 @@ class _FilePickerDialogState extends State<FilePickerDialog> {
         return AlertDialog(
           content: Row(
             children: [
-              CircularProgressIndicator(strokeWidth: 3),
+              SizedBox(
+                width: 72,
+                height: 6,
+                child: LinearProgressIndicator(
+                  minHeight: 6,
+                  borderRadius: BorderRadius.all(Radius.circular(4)),
+                ),
+              ),
               SizedBox(width: 20),
               Expanded(
                 child: Text(
@@ -474,7 +500,7 @@ class _FilePickerDialogState extends State<FilePickerDialog> {
           ),
           decoration: BoxDecoration(
             color: scheme.surfaceContainerLow,
-            borderRadius: BorderRadius.circular(16),
+            borderRadius: BorderRadius.all(Radius.circular(4)),
             boxShadow: [
               BoxShadow(
                 color: scheme.shadow.withValues(alpha: 0.15),
@@ -513,7 +539,7 @@ class _FilePickerDialogState extends State<FilePickerDialog> {
                         side: BorderSide(color: scheme.outlineVariant),
                         backgroundColor: scheme.surfaceContainerHighest,
                         shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(999),
+                          borderRadius: BorderRadius.all(Radius.circular(4)),
                         ),
                       ),
                     ),
@@ -622,7 +648,7 @@ class _FilePickerDialogState extends State<FilePickerDialog> {
                           side: BorderSide(color: scheme.outlineVariant),
                           backgroundColor: scheme.surfaceContainerLowest,
                           shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(999),
+                            borderRadius: BorderRadius.all(Radius.circular(4)),
                           ),
                         ),
                         child: Text(
@@ -746,7 +772,16 @@ class _FilePickerDialogState extends State<FilePickerDialog> {
               // Directory Listing
               Expanded(
                 child: isLoading
-                    ? Center(child: CircularProgressIndicator())
+                    ? const Center(
+                        child: SizedBox(
+                          width: 96,
+                          height: 6,
+                          child: LinearProgressIndicator(
+                            minHeight: 6,
+                            borderRadius: BorderRadius.all(Radius.circular(4)),
+                          ),
+                        ),
+                      )
                     : error.isNotEmpty
                     ? Center(
                         child: Padding(
@@ -791,7 +826,9 @@ class _FilePickerDialogState extends State<FilePickerDialog> {
                             elevation: 0,
                             color: scheme.surfaceContainerLow,
                             shape: RoundedRectangleBorder(
-                              borderRadius: BorderRadius.circular(8),
+                              borderRadius: BorderRadius.all(
+                                Radius.circular(4),
+                              ),
                               side: BorderSide(color: scheme.outlineVariant),
                             ),
                             clipBehavior: Clip.antiAlias,
@@ -880,7 +917,7 @@ class _FilePickerDialogState extends State<FilePickerDialog> {
 
                           return InkWell(
                             onTap: () => _handleEntryClick(entry),
-                            borderRadius: BorderRadius.circular(8),
+                            borderRadius: BorderRadius.all(Radius.circular(4)),
                             child: Padding(
                               padding: const EdgeInsets.symmetric(
                                 horizontal: 10,
@@ -936,7 +973,9 @@ class _FilePickerDialogState extends State<FilePickerDialog> {
                                         border: Border.all(
                                           color: scheme.outlineVariant,
                                         ),
-                                        borderRadius: BorderRadius.circular(4),
+                                        borderRadius: BorderRadius.all(
+                                          Radius.circular(4),
+                                        ),
                                       ),
                                       child: Text(
                                         _formatSize(sizeBytes),

@@ -82,7 +82,7 @@ class _SettingsPageState extends State<SettingsPage> {
         return AlertDialog(
           title: Row(
             children: [
-              Icon(Icons.warning_amber_rounded, color: scheme.error, size: 20),
+              Icon(Icons.warning_amber_outlined, color: scheme.error, size: 20),
               const SizedBox(width: 8),
               Text(
                 I18n.t(context, 'confirm_shutdown'),
@@ -162,7 +162,7 @@ class _SettingsPageState extends State<SettingsPage> {
         children: [
           DecoratedBox(
             decoration: BoxDecoration(
-              color: scheme.surfaceContainerLow,
+              color: Theme.of(context).scaffoldBackgroundColor,
               border: Border(
                 right: BorderSide(
                   color: BeenutTheme.outlineVariant(
@@ -172,24 +172,23 @@ class _SettingsPageState extends State<SettingsPage> {
               ),
             ),
             child: SizedBox(
-              width: 220,
+              width: 248,
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Padding(
-                    padding: const EdgeInsets.fromLTRB(16, 20, 16, 12),
+                    padding: const EdgeInsets.fromLTRB(18, 22, 18, 18),
                     child: OutlinedButton.icon(
                       onPressed: widget.onClose,
                       style: OutlinedButton.styleFrom(
+                        backgroundColor: scheme.surface,
                         padding: const EdgeInsets.symmetric(
-                          horizontal: 14,
-                          vertical: 10,
+                          horizontal: 16,
+                          vertical: 12,
                         ),
-                        foregroundColor: scheme.primary,
-                        side: BorderSide(color: scheme.primary, width: 1.5),
-                        shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(20),
-                        ),
+                        foregroundColor: scheme.onSurface,
+                        side: BorderSide(color: scheme.outline),
+                        shape: BeenutTheme.controlShape,
                       ),
                       icon: const Icon(Icons.chevron_left, size: 16),
                       label: Text(
@@ -201,27 +200,31 @@ class _SettingsPageState extends State<SettingsPage> {
                       ),
                     ),
                   ),
-                  const SizedBox(height: 8),
                   Expanded(
-                    child: ListView(
-                      padding: EdgeInsets.zero,
-                      physics: const NeverScrollableScrollPhysics(),
-                      children: [
-                        for (final tab in SettingsTab.values)
-                          SidebarDestination(
-                            selected: activeTab == tab,
-                            icon: _tabIcon(tab),
-                            title: _tabTitle(context, tab),
-                            onPressed: () => setState(() {
-                              activeTab = tab;
-                              activeTabForMobile = tab;
-                            }),
-                          ),
-                      ],
+                    child: Scrollbar(
+                      child: ListView(
+                        primary: false,
+                        padding: const EdgeInsets.only(bottom: 8),
+                        physics: const AlwaysScrollableScrollPhysics(
+                          parent: ClampingScrollPhysics(),
+                        ),
+                        children: [
+                          for (final tab in SettingsTab.values)
+                            SidebarDestination(
+                              selected: activeTab == tab,
+                              icon: _tabIcon(tab),
+                              title: _tabTitle(context, tab),
+                              onPressed: () => setState(() {
+                                activeTab = tab;
+                                activeTabForMobile = tab;
+                              }),
+                            ),
+                        ],
+                      ),
                     ),
                   ),
                   Padding(
-                    padding: const EdgeInsets.fromLTRB(12, 8, 12, 14),
+                    padding: const EdgeInsets.fromLTRB(18, 8, 18, 18),
                     child: SidebarShutdownButton(
                       onPressed: () => _showShutdownConfirmDialog(context),
                     ),
@@ -232,7 +235,7 @@ class _SettingsPageState extends State<SettingsPage> {
           ),
           Expanded(
             child: ListView(
-              padding: const EdgeInsets.fromLTRB(24, 20, 24, 24),
+              padding: const EdgeInsets.fromLTRB(32, 28, 32, 32),
               children: [
                 Align(
                   alignment: Alignment.topCenter,
@@ -435,10 +438,10 @@ class SettingsNavButton extends StatelessWidget {
     final scheme = Theme.of(context).colorScheme;
     return Material(
       color: selected ? scheme.secondaryContainer : scheme.surfaceContainerLow,
-      borderRadius: BorderRadius.circular(16),
+      borderRadius: BeenutTheme.radiusPanel,
       child: InkWell(
         onTap: onPressed,
-        borderRadius: BorderRadius.circular(16),
+        borderRadius: BeenutTheme.radiusPanel,
         child: Padding(
           padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
           child: Row(
@@ -450,7 +453,8 @@ class SettingsNavButton extends StatelessWidget {
                   color: selected
                       ? scheme.onSecondaryContainer.withValues(alpha: 0.12)
                       : scheme.surfaceContainerHighest,
-                  shape: BoxShape.circle,
+                  shape: BoxShape.rectangle,
+                  borderRadius: BeenutTheme.radiusSharp,
                 ),
                 child: Icon(
                   icon,
@@ -509,31 +513,49 @@ class SidebarDestination extends StatelessWidget {
     final theme = Theme.of(context);
     final scheme = theme.colorScheme;
     return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 3),
+      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 4),
       child: Material(
-        color: selected ? scheme.secondaryContainer : Colors.transparent,
-        borderRadius: BorderRadius.circular(10),
+        color: selected ? scheme.surface : Colors.transparent,
+        shape: RoundedRectangleBorder(
+          borderRadius: BeenutTheme.radiusPanel,
+          side: BorderSide(
+            color: selected ? scheme.secondary : Colors.transparent,
+            width: selected ? 1.5 : 1,
+          ),
+        ),
         child: InkWell(
           onTap: onPressed,
-          borderRadius: BorderRadius.circular(10),
+          borderRadius: BeenutTheme.radiusPanel,
           child: Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 11),
             child: Row(
               children: [
-                Icon(
-                  icon,
-                  size: 20,
-                  color: selected ? scheme.onSecondaryContainer : scheme.onSurfaceVariant,
+                Container(
+                  width: 34,
+                  height: 34,
+                  decoration: BoxDecoration(
+                    color: selected
+                        ? scheme.secondaryContainer
+                        : scheme.surfaceContainerHigh,
+                    borderRadius: BeenutTheme.radiusSharp,
+                  ),
+                  child: Icon(
+                    icon,
+                    size: 19,
+                    color: selected
+                        ? scheme.onSecondaryContainer
+                        : scheme.onSurfaceVariant,
+                  ),
                 ),
-                const SizedBox(width: 14),
+                const SizedBox(width: 12),
                 Expanded(
                   child: Text(
                     title,
                     style: TextStyle(
                       fontSize: 13.5,
-                      fontWeight: selected ? FontWeight.w600 : FontWeight.w500,
+                      fontWeight: selected ? FontWeight.w700 : FontWeight.w600,
                       color: selected
-                          ? scheme.onSecondaryContainer
+                          ? scheme.onSurface
                           : scheme.onSurfaceVariant,
                     ),
                   ),
@@ -560,16 +582,19 @@ class SidebarShutdownButton extends StatelessWidget {
       message: label,
       child: Material(
         color: scheme.errorContainer.withValues(alpha: 0.72),
-        borderRadius: BorderRadius.circular(10),
+        shape: RoundedRectangleBorder(
+          borderRadius: BeenutTheme.radiusPanel,
+          side: BorderSide(color: scheme.error.withValues(alpha: 0.16)),
+        ),
         child: InkWell(
           onTap: onPressed,
-          borderRadius: BorderRadius.circular(10),
+          borderRadius: BeenutTheme.radiusPanel,
           child: Padding(
             padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 11),
             child: Row(
               children: [
                 Icon(
-                  Icons.power_settings_new_rounded,
+                  Icons.power_settings_new,
                   size: 20,
                   color: scheme.onErrorContainer,
                 ),
@@ -608,7 +633,7 @@ class _ShutdownProgressOverlay extends StatelessWidget {
           child: DecoratedBox(
             decoration: BoxDecoration(
               color: scheme.surface,
-              borderRadius: BorderRadius.circular(16),
+              borderRadius: BeenutTheme.radiusPanel,
               border: Border.all(color: scheme.outlineVariant),
             ),
             child: Padding(

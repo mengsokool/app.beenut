@@ -18,7 +18,7 @@ class SettingRowShell extends StatelessWidget {
   Widget build(BuildContext context) {
     final scheme = Theme.of(context).colorScheme;
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 12),
+      padding: const EdgeInsets.symmetric(horizontal: 22, vertical: 16),
       child: Row(
         children: [
           if (leading != null) ...[leading!, const SizedBox(width: 14)],
@@ -29,8 +29,8 @@ class SettingRowShell extends StatelessWidget {
                 Text(
                   label,
                   style: TextStyle(
-                    fontSize: 13.5,
-                    fontWeight: FontWeight.w500,
+                    fontSize: 14.5,
+                    fontWeight: FontWeight.w700,
                     color: scheme.onSurface,
                   ),
                 ),
@@ -41,9 +41,10 @@ class SettingRowShell extends StatelessWidget {
                     maxLines: 2,
                     overflow: TextOverflow.ellipsis,
                     style: TextStyle(
-                      fontSize: 11.5,
+                      fontSize: 12.5,
+                      height: 1.25,
                       color: scheme.onSurfaceVariant,
-                      fontWeight: FontWeight.normal,
+                      fontWeight: FontWeight.w500,
                     ),
                   ),
                 ],

@@ -201,7 +201,7 @@ class _HardwareTestTabState extends State<HardwareTestTab> {
         if (diagnostic.hasData)
           IconInfoRow(
             icon: diagnostic.ok
-                ? Icons.check_circle_outline
+                ? Icons.check_box_outlined
                 : Icons.error_outline,
             iconColor: diagnostic.ok ? scheme.tertiary : scheme.error,
             label: 'Last Diagnostic',
@@ -266,7 +266,7 @@ class _HardwareTestTabState extends State<HardwareTestTab> {
         if (_maintenanceResult != null)
           IconInfoRow(
             icon: _maintenanceResult!.ok
-                ? Icons.check_circle_outline
+                ? Icons.check_box_outlined
                 : Icons.error_outline,
             iconColor: _maintenanceResult!.ok ? scheme.tertiary : scheme.error,
             label: 'Maintenance Action',

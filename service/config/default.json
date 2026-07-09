@@ -30,13 +30,13 @@
         "tray_sensor_pin": 22
     },
     "model": {
-        "confidence_threshold": 0.8,
+        "confidence_threshold": 0.25,
         "engine": "onnx",
         "labels_mode": "auto",
         "labels_path": "",
         "input_size": 640,
         "max_fps": 3,
-        "model_path": "service/models/yolo26n/yolo26n.onnx",
+        "model_path": "",
         "nms_threshold": 0.5
     },
     "previewSocket": "/tmp/beenut-preview.sock",

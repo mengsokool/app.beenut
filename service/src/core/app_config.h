@@ -41,7 +41,7 @@ struct CameraConfig {
 
 struct ModelConfig {
     QString engine = "onnx";
-    QString modelPath = "service/models/yolo26n/yolo26n.onnx";
+    QString modelPath;
     QString labelsMode = "auto";
     QString labelsPath;
     int inputSize = 640;

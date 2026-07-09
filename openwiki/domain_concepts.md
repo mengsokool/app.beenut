@@ -8,8 +8,8 @@ This section explains the AI processing pipelines, real-time object detection mo
 
 BeeNut features native deep-learning inferencing through **ONNX Runtime (C++)**, feeding directly from GStreamer pipelines (`/service/src/core/onnx_yolo_engine.cpp`). It supports two primary processing modes:
 
-### 1. YOLO26n End-to-End NMS-Free Parsing
-The primary runtime model leverages the **YOLO26n architecture** (`/service/models/yolo26n/manifest.json`), designed with End-to-End (E2E) head optimization. This architecture generates non-redundant predictions, enabling a streamlined parsing pipeline:
+### 1. End-to-End NMS-Free YOLO Parsing
+BeeNut can run YOLO-style ONNX models with End-to-End (E2E) heads that generate non-redundant predictions, enabling a streamlined parsing pipeline:
 *   **Predictive Shape**: `(1, num_boxes, 6)`
 *   **Elements**: Each box row correlates to `[x1, y1, x2, y2, score, classId]`.
 *   **Optimization**: Because overlapping box suppression is handled directly inside the model graph, the engine skips CPU-bound Non-Maximum Suppression (NMS) checks entirely, instantly mapping outputs:
@@ -90,14 +90,12 @@ If the inference stream is interrupted (due to camera errors or system configura
 
 ---
 
-## 🏷️ Parts Catalog & Model Manifest Configs
+## 🏷️ Parts Catalog & Model Labels
 
-The local inventory systems are guided by declarative files mapping object detections to physical store parameters.
+The local target catalog maps object detections to operator-facing targets.
 
-### Model Manifest Schema (`MANIFEST.json`)
-The details of each deep-learning binary are stored in localized manifests (`/service/models/yolo26n/manifest.json`). This ensures modular updates:
-*   Declares model dimensions (e.g. `imgsz: 640`), accuracy licenses, classification name alignments, and unique model-family identifiers.
-*   Enforces secure SHA256 integrity validation targeting the ONNX weight files.
+### Model Files
+BeeNut does not require bundled sample models. A custom model can be as small as a single `yolo.onnx` file. When the ONNX file does not include class names in metadata, place a `labels.txt` file next to it using the same class order as the model output.
 
 ### Parts Database Registry (`lib/core/models.dart`)
 Within the operator interface, parts catalogs correlate the machine's detected class indexes to real industrial items (sku codes, physical weights, packaging counts, and customer labels). 

@@ -1,12 +1,12 @@
 import 'package:flutter/material.dart';
 
 class BeenutTheme {
-  static const shell = Color(0xfff6f7f8);
-  static const surface = Color(0xffffffff);
-  static const raised = Color(0xfffafafa);
+  static const shell = Color(0xffeef2f6);
+  static const surface = Color(0xfffbfcfe);
+  static const raised = Color(0xfff5f7fa);
   static const ink = Color(0xff171717);
   static const muted = Color(0xff555f6d);
-  static const line = Color(0xffe3e6ea);
+  static const line = Color(0xffd9e0ea);
   static const accent = Color(0xfff3c622);
   static const success = Color(0xff0b8043);
   static const warning = Color(0xffb06000);
@@ -21,6 +21,10 @@ class BeenutTheme {
   static const _darkMuted = Color(0xffc2c7cf);
   static const _darkLine = Color(0xff454b53);
   static const _darkAccent = Color(0xfff3c622);
+  static const radiusSharp = BorderRadius.all(Radius.circular(4));
+  static const radiusPanel = BorderRadius.all(Radius.circular(6));
+  static const controlShape = RoundedRectangleBorder(borderRadius: radiusSharp);
+  static const panelShape = RoundedRectangleBorder(borderRadius: radiusPanel);
 
   static Color inkColor(BuildContext context) =>
       Theme.of(context).brightness == Brightness.dark ? _darkInk : ink;
@@ -96,15 +100,15 @@ class BeenutTheme {
           errorContainer: const Color(0xfffee2e2),
           onErrorContainer: const Color(0xff991b1b),
           surface: surface,
-          surfaceDim: const Color(0xffe2e8f0),
+          surfaceDim: const Color(0xffdce4ee),
           surfaceBright: surface,
           surfaceContainerLowest: surface,
-          surfaceContainerLow: const Color(0xfff8fafc),
+          surfaceContainerLow: const Color(0xfff3f6fa),
           surfaceContainer: const Color(0xffffffff),
-          surfaceContainerHigh: const Color(0xfff1f5f9),
-          surfaceContainerHighest: const Color(0xffe2e8f0),
-          outline: const Color(0xffcbd5e1),
-          outlineVariant: const Color(0xffe2e8f0),
+          surfaceContainerHigh: const Color(0xffedf2f7),
+          surfaceContainerHighest: const Color(0xffdfe7f0),
+          outline: const Color(0xffb9c5d3),
+          outlineVariant: const Color(0xffd9e1eb),
           onSurface: ink,
           onSurfaceVariant: muted,
         );
@@ -210,14 +214,14 @@ class BeenutTheme {
       filledButtonTheme: const FilledButtonThemeData(
         style: ButtonStyle(
           textStyle: WidgetStatePropertyAll(_buttonTextStyle),
-          shape: WidgetStatePropertyAll(StadiumBorder()),
+          shape: WidgetStatePropertyAll(controlShape),
           minimumSize: WidgetStatePropertyAll(Size(64, 40)),
         ),
       ),
       outlinedButtonTheme: OutlinedButtonThemeData(
         style: ButtonStyle(
           textStyle: const WidgetStatePropertyAll(_buttonTextStyle),
-          shape: const WidgetStatePropertyAll(StadiumBorder()),
+          shape: const WidgetStatePropertyAll(controlShape),
           minimumSize: const WidgetStatePropertyAll(Size(64, 40)),
           side: WidgetStatePropertyAll(BorderSide(color: scheme.outline)),
         ),
@@ -225,15 +229,18 @@ class BeenutTheme {
       textButtonTheme: const TextButtonThemeData(
         style: ButtonStyle(
           textStyle: WidgetStatePropertyAll(_buttonTextStyle),
-          shape: WidgetStatePropertyAll(StadiumBorder()),
+          shape: WidgetStatePropertyAll(controlShape),
           minimumSize: WidgetStatePropertyAll(Size(64, 40)),
         ),
+      ),
+      iconButtonTheme: const IconButtonThemeData(
+        style: ButtonStyle(shape: WidgetStatePropertyAll(controlShape)),
       ),
       cardTheme: CardThemeData(
         color: scheme.surfaceContainerLow,
         surfaceTintColor: Colors.transparent,
         elevation: 0,
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+        shape: panelShape,
       ),
       dividerTheme: DividerThemeData(
         color: scheme.outlineVariant,
@@ -273,13 +280,13 @@ class BeenutTheme {
           color: scheme.onSurfaceVariant,
         ),
         indicatorColor: scheme.secondaryContainer,
-        indicatorShape: const StadiumBorder(),
+        indicatorShape: controlShape,
       ),
       popupMenuTheme: PopupMenuThemeData(
         color: popupColor,
         surfaceTintColor: Colors.transparent,
         elevation: 2,
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+        shape: panelShape,
         textStyle: TextStyle(
           fontFamily: fontFamily,
           fontFamilyFallback: fontFamilyFallback,
@@ -291,6 +298,7 @@ class BeenutTheme {
       dialogTheme: DialogThemeData(
         backgroundColor: dialogBackgroundColor,
         surfaceTintColor: Colors.transparent,
+        shape: panelShape,
         titleTextStyle: TextStyle(
           fontFamily: fontFamily,
           fontFamilyFallback: fontFamilyFallback,
@@ -304,6 +312,11 @@ class BeenutTheme {
           fontSize: 12,
           color: dialogContentColor,
         ),
+      ),
+      inputDecorationTheme: const InputDecorationTheme(
+        border: OutlineInputBorder(borderRadius: radiusSharp),
+        enabledBorder: OutlineInputBorder(borderRadius: radiusSharp),
+        focusedBorder: OutlineInputBorder(borderRadius: radiusSharp),
       ),
       switchTheme: SwitchThemeData(
         thumbColor: WidgetStateProperty.resolveWith((states) {
