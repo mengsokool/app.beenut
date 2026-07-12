@@ -7,6 +7,5 @@ BoxDecoration panelDecoration(BuildContext context) {
   return BoxDecoration(
     color: scheme.surfaceContainer,
     borderRadius: BeenutTheme.radiusPanel,
-    border: Border.all(color: scheme.outlineVariant),
   );
 }

@@ -60,118 +60,8 @@ class StatusSettingsTab extends StatelessWidget {
     return Column(
       children: [
         SettingsGroup(
-          title: I18n.t(context, 'display_settings'),
-          children: [
-            StepperSettingRow(
-              label: I18n.t(context, 'ui_scale'),
-              description: I18n.t(context, 'ui_scale_desc'),
-              value: uiScalePercent,
-              unit: '%',
-              min: 50,
-              max: 200,
-              step: 5,
-              enabled: enabled,
-              onChanged: (value) => onSave(
-                config.copyWithUiSettings(ui.copyWith(scale: value / 100)),
-              ),
-            ),
-            SelectSettingRow(
-              label: I18n.t(context, 'app_language'),
-              description: I18n.t(context, 'app_language_desc'),
-              value: ui.language == 'th' ? 'ไทย' : 'English',
-              options: const ['English', 'ไทย'],
-              enabled: enabled,
-              onSelected: (value) => onSave(
-                config.copyWithUiSettings(
-                  ui.copyWith(language: value == 'ไทย' ? 'th' : 'en'),
-                ),
-              ),
-            ),
-            SelectSettingRow(
-              label: I18n.t(context, 'theme_mode'),
-              description: I18n.t(context, 'theme_mode_desc'),
-              value: ui.theme == 'light'
-                  ? I18n.t(context, 'theme_light')
-                  : (ui.theme == 'dark'
-                        ? I18n.t(context, 'theme_dark')
-                        : I18n.t(context, 'theme_system')),
-              options: [
-                I18n.t(context, 'theme_system'),
-                I18n.t(context, 'theme_light'),
-                I18n.t(context, 'theme_dark'),
-              ],
-              enabled: enabled,
-              onSelected: (value) {
-                String mode = 'system';
-                if (value == I18n.t(context, 'theme_light')) {
-                  mode = 'light';
-                } else if (value == I18n.t(context, 'theme_dark')) {
-                  mode = 'dark';
-                }
-                onSave(config.copyWithUiSettings(ui.copyWith(theme: mode)));
-              },
-            ),
-          ],
-        ),
-        SettingsGroup(
-          title: I18n.t(context, 'tab_status'),
-          children: [
-            IconInfoRow(
-              icon: Icons.sensors_outlined,
-              iconColor: scheme.primary,
-              label: 'Tray Sensor',
-              value: state.trayPresent ? 'Present' : 'Missing',
-              tone: state.trayPresent ? RowTone.success : RowTone.neutral,
-            ),
-            IconInfoRow(
-              icon: Icons.lightbulb_outline,
-              iconColor: scheme.secondary,
-              label: 'LED Relay',
-              value: state.lightOn ? 'ON' : 'OFF',
-              tone: state.lightOn ? RowTone.warning : RowTone.neutral,
-            ),
-            IconInfoRow(
-              icon: Icons.verified_outlined,
-              iconColor: scheme.tertiary,
-              label: 'Last Detection Count',
-              value: '${state.count} pcs',
-            ),
-            IconInfoRow(
-              icon: Icons.memory_outlined,
-              iconColor: scheme.primary,
-              label: 'Inference Latency',
-              value: '${state.processingMs} ms',
-            ),
-            IconInfoRow(
-              icon: Icons.device_thermostat_outlined,
-              iconColor: thermalColor,
-              label: 'Thermal Policy',
-              description: state.thermalDetail,
-              value:
-                  '${state.thermalState} · ${state.temperature.toStringAsFixed(1)} C · ${state.effectiveAiMaxFps.toStringAsFixed(1)} fps',
-              tone: thermalTone,
-            ),
-          ],
-        ),
-        SettingsGroup(
-          title: 'Resource Usage',
-          children: [
-            Padding(
-              padding: const EdgeInsets.all(12),
-              child: SizedBox(
-                height: 360,
-                child: ResourceHistoryChart(
-                  daemonCpu: state.daemonCpu,
-                  daemonRam: state.daemonRam,
-                  flutterCpu: state.flutterCpu,
-                  flutterRam: state.flutterRam,
-                ),
-              ),
-            ),
-          ],
-        ),
-        SettingsGroup(
-          title: 'Connection Diagnostics',
+          title: I18n.t(context, 'system_health'),
+          icon: Icons.health_and_safety_outlined,
           children: [
             IconInfoRow(
               icon: Icons.power_outlined,
@@ -241,28 +131,6 @@ class StatusSettingsTab extends StatelessWidget {
                   '${state.model} · ${state.inferenceFps.toStringAsFixed(1)} fps',
             ),
             IconInfoRow(
-              icon: Icons.cable_outlined,
-              iconColor: scheme.onSurfaceVariant,
-              label: 'Preview',
-              description: state.previewCaps,
-              value: state.previewTransport,
-            ),
-            ActionSettingRow(
-              icon: Icons.manage_search_outlined,
-              iconColor: scheme.primary,
-              label: 'Hardware Inventory',
-              description: capabilities.hasData
-                  ? '${capabilities.cameras.length} cameras · ${capabilities.aiRuntimes.length} AI runtimes · GPIO ${gpio['backend'] ?? 'unknown'}'
-                  : I18n.t(context, 'no_hw_diagnostics'),
-              actions: [
-                RowAction(
-                  label: 'Scan',
-                  primary: true,
-                  onPressed: snapshot.connected ? onRefreshCapabilities : null,
-                ),
-              ],
-            ),
-            IconInfoRow(
               icon: validation.ok
                   ? Icons.check_box_outlined
                   : Icons.error_outline,
@@ -293,6 +161,157 @@ class StatusSettingsTab extends StatelessWidget {
                 value: saveResult.message,
                 tone: saveResult.ok ? RowTone.success : RowTone.danger,
               ),
+          ],
+        ),
+        SettingsGroup(
+          title: I18n.t(context, 'display_settings'),
+          icon: Icons.display_settings_outlined,
+          children: [
+            StepperSettingRow(
+              label: I18n.t(context, 'ui_scale'),
+              description: I18n.t(context, 'ui_scale_desc'),
+              value: uiScalePercent,
+              unit: '%',
+              min: 50,
+              max: 200,
+              step: 5,
+              enabled: enabled,
+              onChanged: (value) => onSave(
+                config.copyWithUiSettings(ui.copyWith(scale: value / 100)),
+              ),
+            ),
+            SelectSettingRow(
+              label: I18n.t(context, 'app_language'),
+              description: I18n.t(context, 'app_language_desc'),
+              value: ui.language == 'th' ? 'ไทย' : 'English',
+              options: const ['English', 'ไทย'],
+              enabled: enabled,
+              onSelected: (value) => onSave(
+                config.copyWithUiSettings(
+                  ui.copyWith(language: value == 'ไทย' ? 'th' : 'en'),
+                ),
+              ),
+            ),
+            SelectSettingRow(
+              label: I18n.t(context, 'theme_mode'),
+              description: I18n.t(context, 'theme_mode_desc'),
+              value: ui.theme == 'light'
+                  ? I18n.t(context, 'theme_light')
+                  : (ui.theme == 'dark'
+                        ? I18n.t(context, 'theme_dark')
+                        : I18n.t(context, 'theme_system')),
+              options: [
+                I18n.t(context, 'theme_system'),
+                I18n.t(context, 'theme_light'),
+                I18n.t(context, 'theme_dark'),
+              ],
+              enabled: enabled,
+              onSelected: (value) {
+                String mode = 'system';
+                if (value == I18n.t(context, 'theme_light')) {
+                  mode = 'light';
+                } else if (value == I18n.t(context, 'theme_dark')) {
+                  mode = 'dark';
+                }
+                onSave(config.copyWithUiSettings(ui.copyWith(theme: mode)));
+              },
+            ),
+          ],
+        ),
+        SettingsGroup(
+          title: I18n.t(context, 'device_state'),
+          description: I18n.t(context, 'device_state_desc'),
+          icon: Icons.monitor_heart_outlined,
+          collapsible: true,
+          initiallyExpanded: false,
+          children: [
+            IconInfoRow(
+              icon: Icons.sensors_outlined,
+              iconColor: scheme.primary,
+              label: 'Tray Sensor',
+              value: state.trayPresent ? 'Present' : 'Missing',
+              tone: state.trayPresent ? RowTone.success : RowTone.neutral,
+            ),
+            IconInfoRow(
+              icon: Icons.lightbulb_outline,
+              iconColor: scheme.secondary,
+              label: 'LED Relay',
+              value: state.lightOn ? 'ON' : 'OFF',
+              tone: state.lightOn ? RowTone.warning : RowTone.neutral,
+            ),
+            IconInfoRow(
+              icon: Icons.verified_outlined,
+              iconColor: scheme.tertiary,
+              label: 'Last Detection Count',
+              value: '${state.count} pcs',
+            ),
+            IconInfoRow(
+              icon: Icons.memory_outlined,
+              iconColor: scheme.primary,
+              label: 'Inference Latency',
+              value: '${state.processingMs} ms',
+            ),
+            IconInfoRow(
+              icon: Icons.device_thermostat_outlined,
+              iconColor: thermalColor,
+              label: 'Thermal Policy',
+              description: state.thermalDetail,
+              value:
+                  '${state.thermalState} · ${state.temperature.toStringAsFixed(1)} C · ${state.effectiveAiMaxFps.toStringAsFixed(1)} fps',
+              tone: thermalTone,
+            ),
+          ],
+        ),
+        SettingsGroup(
+          title: I18n.t(context, 'performance_history'),
+          description: I18n.t(context, 'performance_history_desc'),
+          icon: Icons.query_stats_outlined,
+          collapsible: true,
+          initiallyExpanded: false,
+          children: [
+            Padding(
+              padding: const EdgeInsets.all(12),
+              child: SizedBox(
+                height: 360,
+                child: ResourceHistoryChart(
+                  daemonCpu: state.daemonCpu,
+                  daemonRam: state.daemonRam,
+                  flutterCpu: state.flutterCpu,
+                  flutterRam: state.flutterRam,
+                ),
+              ),
+            ),
+          ],
+        ),
+        SettingsGroup(
+          title: I18n.t(context, 'technical_details'),
+          description: I18n.t(context, 'technical_details_desc'),
+          icon: Icons.tune_outlined,
+          collapsible: true,
+          initiallyExpanded: false,
+          children: [
+            IconInfoRow(
+              icon: Icons.cable_outlined,
+              iconColor: scheme.onSurfaceVariant,
+              label: 'Preview',
+              description: state.previewCaps,
+              value: state.previewTransport,
+            ),
+            ActionSettingRow(
+              icon: Icons.manage_search_outlined,
+              iconColor: scheme.primary,
+              label: 'Hardware Inventory',
+              description: capabilities.hasData
+                  ? '${capabilities.cameras.length} cameras · ${capabilities.aiRuntimes.length} AI runtimes · GPIO ${gpio['backend'] ?? 'unknown'}'
+                  : I18n.t(context, 'no_hw_diagnostics'),
+              actions: [
+                RowAction(
+                  label: 'Scan',
+                  primary: true,
+                  onPressed: snapshot.connected ? onRefreshCapabilities : null,
+                ),
+              ],
+            ),
           ],
         ),
       ],

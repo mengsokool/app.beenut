@@ -82,7 +82,8 @@ class ModelSettingsTab extends StatelessWidget {
     return Column(
       children: [
         SettingsGroup(
-          title: 'Runtime',
+          title: I18n.t(context, 'model_runtime'),
+          icon: Icons.memory_outlined,
           children: [
             ChoiceCardsRow(
               options: [
@@ -112,7 +113,8 @@ class ModelSettingsTab extends StatelessWidget {
           ],
         ),
         SettingsGroup(
-          title: 'Model File',
+          title: I18n.t(context, 'model_source'),
+          icon: Icons.folder_open_outlined,
           children: [
             PathSettingRow(
               label: engine == 'hailo' ? 'Hailo HEF path' : 'ONNX model path',
@@ -172,7 +174,11 @@ class ModelSettingsTab extends StatelessWidget {
           ],
         ),
         SettingsGroup(
-          title: 'Advanced Tuning',
+          title: I18n.t(context, 'model_tuning'),
+          description: I18n.t(context, 'model_tuning_desc'),
+          icon: Icons.tune_outlined,
+          collapsible: true,
+          initiallyExpanded: false,
           children: [
             DecimalStepperSettingRow(
               label: 'Confidence',
@@ -219,7 +225,8 @@ class ModelSettingsTab extends StatelessWidget {
           ],
         ),
         SettingsGroup(
-          title: I18n.t(context, 'counting_filter_settings'),
+          title: I18n.t(context, 'counting_behavior'),
+          icon: Icons.filter_alt_outlined,
           children: [
             StepperSettingRow(
               label: I18n.t(context, 'stabilization_frames'),
@@ -243,6 +250,15 @@ class ModelSettingsTab extends StatelessWidget {
               onChanged: (value) =>
                   _updateCounting(counting.copyWith(timeoutMs: value)),
             ),
+          ],
+        ),
+        SettingsGroup(
+          title: I18n.t(context, 'safety_fallback'),
+          description: I18n.t(context, 'safety_fallback_desc'),
+          icon: Icons.shield_outlined,
+          collapsible: true,
+          initiallyExpanded: false,
+          children: [
             SwitchSettingRow(
               label: I18n.t(context, 'force_safe_mode'),
               description: I18n.t(context, 'force_safe_mode_desc'),

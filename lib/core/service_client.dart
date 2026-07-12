@@ -1,5 +1,4 @@
 import 'dart:async';
-import 'dart:io' show Process;
 
 import 'package:flutter/foundation.dart';
 import 'models.dart';
@@ -259,13 +258,6 @@ class ServiceClient extends ChangeNotifier implements KioskServiceClient {
   @override
   void shutdown() {
     _send({'type': 'shutdown'});
-    try {
-      Process.run('sudo', ['-n', 'systemctl', 'poweroff']);
-    } catch (_) {
-      try {
-        Process.run('shutdown', ['-h', 'now']);
-      } catch (_) {}
-    }
   }
 
   @override

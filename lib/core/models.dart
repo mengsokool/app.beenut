@@ -419,11 +419,7 @@ class UiSettings {
     'theme': theme,
   };
 
-  UiSettings copyWith({
-    double? scale,
-    String? language,
-    String? theme,
-  }) =>
+  UiSettings copyWith({double? scale, String? language, String? theme}) =>
       UiSettings(
         scale: (scale ?? this.scale).clamp(0.5, 2.0).toDouble(),
         language: language ?? this.language,
@@ -823,6 +819,7 @@ class HardwareCapabilities {
     required this.gpio,
     required this.gstreamer,
     required this.system,
+    this.poweroff = const {},
   });
 
   factory HardwareCapabilities.fromJson(Map<String, dynamic> json) =>
@@ -833,6 +830,7 @@ class HardwareCapabilities {
         gpio: json['gpio'] as Map<String, dynamic>? ?? const {},
         gstreamer: json['gstreamer'] as Map<String, dynamic>? ?? const {},
         system: json['system'] as Map<String, dynamic>? ?? const {},
+        poweroff: json['poweroff'] as Map<String, dynamic>? ?? const {},
       );
 
   static List<Map<String, dynamic>> _mapList(Object? raw) =>
@@ -856,6 +854,9 @@ class HardwareCapabilities {
   final Map<String, dynamic> gpio;
   final Map<String, dynamic> gstreamer;
   final Map<String, dynamic> system;
+  final Map<String, dynamic> poweroff;
+
+  bool get canPoweroff => _boolValue(poweroff, 'available', false);
 
   bool get hasData =>
       cameras.isNotEmpty ||
@@ -863,7 +864,8 @@ class HardwareCapabilities {
       aiRuntimes.isNotEmpty ||
       gpio.isNotEmpty ||
       gstreamer.isNotEmpty ||
-      system.isNotEmpty;
+      system.isNotEmpty ||
+      poweroff.isNotEmpty;
 }
 
 @immutable

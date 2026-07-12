@@ -3,6 +3,7 @@
 #include "app_config.h"
 #include "service_state.h"
 #include "hardware_discovery.h"
+#include "power_control.h"
 
 #include <QObject>
 #include <QString>
@@ -141,7 +142,4 @@ ThermalPolicy thermalPolicyFor(double temperatureC, double configuredAiMaxFps);
 QJsonObject diagnosticEvent(const QString& target, bool ok, const QString& message,
                             const QString& detail = {}, const QJsonObject& metrics = {});
 QJsonObject configSaveResult(bool ok, const QString& message, const QString& detail = {});
-bool requestSystemPoweroff(const QString& configOverride, QString* detail);
-inline bool requestSystemPoweroff(QString* detail) { return requestSystemPoweroff({}, detail); }
-
 }  // namespace beenut

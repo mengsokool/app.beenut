@@ -37,7 +37,9 @@ class SettingsPage extends StatefulWidget {
 class _SettingsPageState extends State<SettingsPage> {
   SettingsTab activeTab = SettingsTab.general;
   Timer? _refreshTimer;
+  Timer? _shutdownTimeout;
   bool _shutdownInProgress = false;
+  int _shutdownRequestStartedAt = 0;
 
   @override
   void initState() {
@@ -53,14 +55,29 @@ class _SettingsPageState extends State<SettingsPage> {
   @override
   void dispose() {
     _refreshTimer?.cancel();
+    _shutdownTimeout?.cancel();
     super.dispose();
+  }
+
+  @override
+  void didUpdateWidget(SettingsPage oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    final diagnostic = widget.snapshot.diagnostic;
+    if (_shutdownInProgress &&
+        diagnostic.target == 'shutdown' &&
+        !diagnostic.ok &&
+        diagnostic.timestampMs >= _shutdownRequestStartedAt) {
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (mounted) _showShutdownDenied();
+      });
+    }
   }
 
   String _tabTitle(BuildContext context, SettingsTab tab) => switch (tab) {
     SettingsTab.general => I18n.t(context, 'tab_general'),
     SettingsTab.camera => I18n.t(context, 'tab_camera'),
     SettingsTab.ai => I18n.t(context, 'tab_ai'),
-    SettingsTab.catalog => 'Targets',
+    SettingsTab.catalog => I18n.t(context, 'tab_catalog'),
     SettingsTab.test => I18n.t(context, 'tab_test'),
   };
 
@@ -73,6 +90,29 @@ class _SettingsPageState extends State<SettingsPage> {
   };
 
   SettingsTab? activeTabForMobile;
+
+  void _beginShutdown() {
+    setState(() {
+      _shutdownInProgress = true;
+      _shutdownRequestStartedAt = DateTime.now().millisecondsSinceEpoch;
+    });
+    _shutdownTimeout?.cancel();
+    _shutdownTimeout = Timer(const Duration(seconds: 10), () {
+      if (mounted && _shutdownInProgress) _showShutdownDenied();
+    });
+    widget.client.shutdown();
+  }
+
+  void _showShutdownDenied() {
+    if (!_shutdownInProgress) return;
+    _shutdownTimeout?.cancel();
+    setState(() => _shutdownInProgress = false);
+    ScaffoldMessenger.of(context)
+      ..hideCurrentSnackBar()
+      ..showSnackBar(
+        SnackBar(content: Text(I18n.t(context, 'shutdown_not_permitted'))),
+      );
+  }
 
   void _showShutdownConfirmDialog(BuildContext context) {
     showDialog(
@@ -112,8 +152,7 @@ class _SettingsPageState extends State<SettingsPage> {
             FilledButton(
               onPressed: () {
                 Navigator.of(context).pop();
-                setState(() => _shutdownInProgress = true);
-                widget.client.shutdown();
+                _beginShutdown();
               },
               style: FilledButton.styleFrom(
                 backgroundColor: scheme.error,
@@ -162,49 +201,51 @@ class _SettingsPageState extends State<SettingsPage> {
         children: [
           DecoratedBox(
             decoration: BoxDecoration(
-              color: Theme.of(context).scaffoldBackgroundColor,
+              color: scheme.surfaceContainerLow,
               border: Border(
-                right: BorderSide(
-                  color: BeenutTheme.outlineVariant(
-                    context,
-                  ).withValues(alpha: 0.3),
-                ),
+                right: BorderSide(color: BeenutTheme.outlineVariant(context)),
               ),
             ),
             child: SizedBox(
-              width: 248,
+              width: 232,
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Padding(
-                    padding: const EdgeInsets.fromLTRB(18, 22, 18, 18),
-                    child: OutlinedButton.icon(
-                      onPressed: widget.onClose,
-                      style: OutlinedButton.styleFrom(
-                        backgroundColor: scheme.surface,
-                        padding: const EdgeInsets.symmetric(
-                          horizontal: 16,
-                          vertical: 12,
+                    padding: const EdgeInsets.fromLTRB(12, 14, 16, 12),
+                    child: Row(
+                      children: [
+                        IconButton(
+                          onPressed: widget.onClose,
+                          tooltip: I18n.t(context, 'back_to_kiosk'),
+                          icon: const Icon(Icons.arrow_back, size: 20),
+                          style: IconButton.styleFrom(
+                            foregroundColor: scheme.onSurface,
+                            minimumSize: const Size(44, 44),
+                          ),
                         ),
-                        foregroundColor: scheme.onSurface,
-                        side: BorderSide(color: scheme.outline),
-                        shape: BeenutTheme.controlShape,
-                      ),
-                      icon: const Icon(Icons.chevron_left, size: 16),
-                      label: Text(
-                        I18n.t(context, 'back_to_kiosk'),
-                        style: const TextStyle(
-                          fontSize: 12,
-                          fontWeight: FontWeight.w700,
+                        const SizedBox(width: 4),
+                        Expanded(
+                          child: Text(
+                            I18n.t(context, 'settings_title'),
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                            style: TextStyle(
+                              fontSize: 17,
+                              fontWeight: FontWeight.w700,
+                              color: scheme.onSurface,
+                            ),
+                          ),
                         ),
-                      ),
+                      ],
                     ),
                   ),
+                  Divider(height: 1, color: scheme.outlineVariant),
                   Expanded(
                     child: Scrollbar(
                       child: ListView(
                         primary: false,
-                        padding: const EdgeInsets.only(bottom: 8),
+                        padding: const EdgeInsets.symmetric(vertical: 10),
                         physics: const AlwaysScrollableScrollPhysics(
                           parent: ClampingScrollPhysics(),
                         ),
@@ -223,19 +264,20 @@ class _SettingsPageState extends State<SettingsPage> {
                       ),
                     ),
                   ),
-                  Padding(
-                    padding: const EdgeInsets.fromLTRB(18, 8, 18, 18),
-                    child: SidebarShutdownButton(
-                      onPressed: () => _showShutdownConfirmDialog(context),
+                  if (widget.snapshot.capabilities.canPoweroff)
+                    Padding(
+                      padding: const EdgeInsets.fromLTRB(14, 8, 14, 14),
+                      child: SidebarShutdownButton(
+                        onPressed: () => _showShutdownConfirmDialog(context),
+                      ),
                     ),
-                  ),
                 ],
               ),
             ),
           ),
           Expanded(
             child: ListView(
-              padding: const EdgeInsets.fromLTRB(32, 28, 32, 32),
+              padding: const EdgeInsets.fromLTRB(32, 24, 32, 32),
               children: [
                 Align(
                   alignment: Alignment.topCenter,
@@ -277,6 +319,7 @@ class _SettingsPageState extends State<SettingsPage> {
   ) {
     final currentTab = activeTabForMobile;
     final scheme = Theme.of(context).colorScheme;
+    final canPoweroff = widget.snapshot.capabilities.canPoweroff;
     if (currentTab == null) {
       return Scaffold(
         backgroundColor: scheme.surface,
@@ -302,10 +345,10 @@ class _SettingsPageState extends State<SettingsPage> {
         ),
         body: ListView.separated(
           padding: const EdgeInsets.all(12),
-          itemCount: SettingsTab.values.length + 1,
+          itemCount: SettingsTab.values.length + (canPoweroff ? 1 : 0),
           separatorBuilder: (_, _) => const SizedBox(height: 8),
           itemBuilder: (context, index) {
-            if (index == SettingsTab.values.length) {
+            if (canPoweroff && index == SettingsTab.values.length) {
               return Padding(
                 padding: const EdgeInsets.only(top: 12),
                 child: SidebarShutdownButton(
@@ -438,33 +481,22 @@ class SettingsNavButton extends StatelessWidget {
     final scheme = Theme.of(context).colorScheme;
     return Material(
       color: selected ? scheme.secondaryContainer : scheme.surfaceContainerLow,
-      borderRadius: BeenutTheme.radiusPanel,
+      borderRadius: BeenutTheme.radiusSharp,
       child: InkWell(
         onTap: onPressed,
-        borderRadius: BeenutTheme.radiusPanel,
+        borderRadius: BeenutTheme.radiusSharp,
         child: Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+          padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 13),
           child: Row(
             children: [
-              Container(
-                width: 40,
-                height: 40,
-                decoration: BoxDecoration(
-                  color: selected
-                      ? scheme.onSecondaryContainer.withValues(alpha: 0.12)
-                      : scheme.surfaceContainerHighest,
-                  shape: BoxShape.rectangle,
-                  borderRadius: BeenutTheme.radiusSharp,
-                ),
-                child: Icon(
-                  icon,
-                  size: 22,
-                  color: selected
-                      ? scheme.onSecondaryContainer
-                      : scheme.onSurfaceVariant,
-                ),
+              Icon(
+                icon,
+                size: 22,
+                color: selected
+                    ? scheme.onSecondaryContainer
+                    : scheme.onSurfaceVariant,
               ),
-              const SizedBox(width: 16),
+              const SizedBox(width: 14),
               Expanded(
                 child: Text(
                   title,
@@ -510,42 +542,25 @@ class SidebarDestination extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final theme = Theme.of(context);
-    final scheme = theme.colorScheme;
+    final scheme = Theme.of(context).colorScheme;
     return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 4),
+      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 2),
       child: Material(
-        color: selected ? scheme.surface : Colors.transparent,
-        shape: RoundedRectangleBorder(
-          borderRadius: BeenutTheme.radiusPanel,
-          side: BorderSide(
-            color: selected ? scheme.secondary : Colors.transparent,
-            width: selected ? 1.5 : 1,
-          ),
-        ),
+        color: selected ? scheme.secondaryContainer : Colors.transparent,
+        borderRadius: BeenutTheme.radiusSharp,
         child: InkWell(
           onTap: onPressed,
-          borderRadius: BeenutTheme.radiusPanel,
+          borderRadius: BeenutTheme.radiusSharp,
           child: Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 11),
+            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 12),
             child: Row(
               children: [
-                Container(
-                  width: 34,
-                  height: 34,
-                  decoration: BoxDecoration(
-                    color: selected
-                        ? scheme.secondaryContainer
-                        : scheme.surfaceContainerHigh,
-                    borderRadius: BeenutTheme.radiusSharp,
-                  ),
-                  child: Icon(
-                    icon,
-                    size: 19,
-                    color: selected
-                        ? scheme.onSecondaryContainer
-                        : scheme.onSurfaceVariant,
-                  ),
+                Icon(
+                  icon,
+                  size: 20,
+                  color: selected
+                      ? scheme.onSecondaryContainer
+                      : scheme.onSurfaceVariant,
                 ),
                 const SizedBox(width: 12),
                 Expanded(
@@ -555,8 +570,8 @@ class SidebarDestination extends StatelessWidget {
                       fontSize: 13.5,
                       fontWeight: selected ? FontWeight.w700 : FontWeight.w600,
                       color: selected
-                          ? scheme.onSurface
-                          : scheme.onSurfaceVariant,
+                          ? scheme.onSecondaryContainer
+                          : scheme.onSurface,
                     ),
                   ),
                 ),
@@ -581,16 +596,13 @@ class SidebarShutdownButton extends StatelessWidget {
     return Tooltip(
       message: label,
       child: Material(
-        color: scheme.errorContainer.withValues(alpha: 0.72),
-        shape: RoundedRectangleBorder(
-          borderRadius: BeenutTheme.radiusPanel,
-          side: BorderSide(color: scheme.error.withValues(alpha: 0.16)),
-        ),
+        color: scheme.errorContainer.withValues(alpha: 0.48),
+        borderRadius: BeenutTheme.radiusSharp,
         child: InkWell(
           onTap: onPressed,
-          borderRadius: BeenutTheme.radiusPanel,
+          borderRadius: BeenutTheme.radiusSharp,
           child: Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 11),
+            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 11),
             child: Row(
               children: [
                 Icon(

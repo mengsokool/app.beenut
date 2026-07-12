@@ -219,7 +219,8 @@ class _ConfigEditorState extends State<ConfigEditor> {
     return Column(
       children: [
         SettingsGroup(
-          title: I18n.t(context, 'camera_settings'),
+          title: I18n.t(context, 'camera_basics'),
+          icon: Icons.camera_alt_outlined,
           children: [
             SelectSettingRow(
               label: I18n.t(context, 'camera_source'),
@@ -294,6 +295,31 @@ class _ConfigEditorState extends State<ConfigEditor> {
                 }
               },
             ),
+            SwitchSettingRow(
+              label: I18n.t(context, 'flip_horizontal'),
+              description: I18n.t(context, 'flip_horizontal_desc'),
+              value: camera.flipHorizontal,
+              enabled: widget.enabled,
+              onChanged: (value) =>
+                  _updateCamera(camera.copyWith(flipHorizontal: value)),
+            ),
+            SwitchSettingRow(
+              label: I18n.t(context, 'flip_vertical'),
+              description: I18n.t(context, 'flip_vertical_desc'),
+              value: camera.flipVertical,
+              enabled: widget.enabled,
+              onChanged: (value) =>
+                  _updateCamera(camera.copyWith(flipVertical: value)),
+            ),
+          ],
+        ),
+        SettingsGroup(
+          title: I18n.t(context, 'camera_pipeline'),
+          description: I18n.t(context, 'camera_pipeline_desc'),
+          icon: Icons.settings_input_component_outlined,
+          collapsible: true,
+          initiallyExpanded: false,
+          children: [
             SelectSettingRow(
               label: I18n.t(context, 'preview_transport'),
               description: I18n.t(context, 'preview_transport_desc'),
@@ -314,28 +340,11 @@ class _ConfigEditorState extends State<ConfigEditor> {
               onChanged: (value) =>
                   _updateCamera(camera.copyWith(warmupFrames: value)),
             ),
-            SwitchSettingRow(
-              label: I18n.t(context, 'flip_horizontal'),
-              description: I18n.t(context, 'flip_horizontal_desc'),
-              value: camera.flipHorizontal,
-              enabled: widget.enabled,
-              onChanged: (value) =>
-                  _updateCamera(camera.copyWith(flipHorizontal: value)),
-            ),
-            SwitchSettingRow(
-              label: I18n.t(context, 'flip_vertical'),
-              description: I18n.t(context, 'flip_vertical_desc'),
-              value: camera.flipVertical,
-              enabled: widget.enabled,
-              onChanged: (value) =>
-                  _updateCamera(camera.copyWith(flipVertical: value)),
-            ),
           ],
         ),
         SettingsGroup(
-          title: hardwareTriggerAvailable
-              ? I18n.t(context, 'trigger_gpio_settings')
-              : I18n.t(context, 'trigger_settings'),
+          title: I18n.t(context, 'count_trigger'),
+          icon: Icons.play_circle_outline,
           children: [
             IconInfoRow(
               icon: hardwareTriggerAvailable
@@ -372,36 +381,45 @@ class _ConfigEditorState extends State<ConfigEditor> {
                 _updateCounting(counting.copyWith(triggerMode: mode));
               },
             ),
-            if (hardwareTriggerAvailable && triggerMode == 'tray_sensor') ...[
-              SelectSettingRow(
-                label: I18n.t(context, 'tray_sensor_pin'),
-                description: I18n.t(context, 'tray_sensor_pin_desc'),
-                value: 'GPIO $trayPin',
-                options: [
-                  if (!gpioPins.contains(trayPin)) 'GPIO $trayPin',
-                  for (final pin in gpioPins) 'GPIO $pin',
-                ],
-                enabled: widget.enabled,
-                onSelected: (value) => _updateGpio(
-                  gpio.copyWith(
-                    traySensorPin: int.parse(value.split(' ').last),
+          ],
+        ),
+        if (hardwareTriggerAvailable)
+          SettingsGroup(
+            title: I18n.t(context, 'gpio_mapping'),
+            description: I18n.t(context, 'gpio_mapping_desc'),
+            icon: Icons.developer_board_outlined,
+            collapsible: true,
+            initiallyExpanded: false,
+            children: [
+              if (triggerMode == 'tray_sensor') ...[
+                SelectSettingRow(
+                  label: I18n.t(context, 'tray_sensor_pin'),
+                  description: I18n.t(context, 'tray_sensor_pin_desc'),
+                  value: 'GPIO $trayPin',
+                  options: [
+                    if (!gpioPins.contains(trayPin)) 'GPIO $trayPin',
+                    for (final pin in gpioPins) 'GPIO $pin',
+                  ],
+                  enabled: widget.enabled,
+                  onSelected: (value) => _updateGpio(
+                    gpio.copyWith(
+                      traySensorPin: int.parse(value.split(' ').last),
+                    ),
                   ),
                 ),
-              ),
-              StepperSettingRow(
-                label: I18n.t(context, 'debounce_time'),
-                description: I18n.t(context, 'debounce_time_desc'),
-                value: gpio.debounceMs,
-                unit: 'ms',
-                min: 0,
-                max: 1000,
-                step: 5,
-                enabled: widget.enabled,
-                onChanged: (value) =>
-                    _updateGpio(gpio.copyWith(debounceMs: value)),
-              ),
-            ],
-            if (hardwareTriggerAvailable) ...[
+                StepperSettingRow(
+                  label: I18n.t(context, 'debounce_time'),
+                  description: I18n.t(context, 'debounce_time_desc'),
+                  value: gpio.debounceMs,
+                  unit: 'ms',
+                  min: 0,
+                  max: 1000,
+                  step: 5,
+                  enabled: widget.enabled,
+                  onChanged: (value) =>
+                      _updateGpio(gpio.copyWith(debounceMs: value)),
+                ),
+              ],
               SelectSettingRow(
                 label: I18n.t(context, 'led_relay_pin'),
                 description: I18n.t(context, 'led_relay_pin_desc'),
@@ -424,8 +442,7 @@ class _ConfigEditorState extends State<ConfigEditor> {
                     _updateGpio(gpio.copyWith(activeLow: value)),
               ),
             ],
-          ],
-        ),
+          ),
       ],
     );
   }

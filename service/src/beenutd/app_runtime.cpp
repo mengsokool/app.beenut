@@ -11,10 +11,7 @@
 #include <QDateTime>
 #include <QJsonArray>
 #include <QObject>
-#include <QPair>
-#include <QProcess>
 #include <QSocketNotifier>
-#include <QVector>
 #include <QElapsedTimer>
 #include <QTimer>
 #include <QThread>
@@ -54,38 +51,18 @@ void closeSignalFds()
 }
 #endif
 
-bool runCommand(const QString& program, const QStringList& arguments, QString* detail)
-{
-    QProcess process;
-    process.start(program, arguments);
-    if (!process.waitForStarted(1000)) {
-        if (detail != nullptr) {
-            *detail = QString("%1: %2").arg(program, process.errorString());
-        }
-        return false;
-    }
-    if (!process.waitForFinished(3000)) {
-        process.kill();
-        process.waitForFinished(500);
-        if (detail != nullptr) {
-            *detail = QString("%1 timed out").arg(program);
-        }
-        return false;
-    }
-    const auto stderrText = QString::fromUtf8(process.readAllStandardError()).trimmed();
-    if (process.exitStatus() == QProcess::NormalExit && process.exitCode() == 0) {
-        return true;
-    }
-    if (detail != nullptr) {
-        *detail = QString("%1 exited with %2%3")
-                      .arg(program)
-                      .arg(process.exitCode())
-                      .arg(stderrText.isEmpty() ? QString() : QString(": %1").arg(stderrText));
-    }
-    return false;
-}
-
 }  // namespace
+
+CapabilitySnapshot discoverRuntimeCapabilities(const AppConfig& config)
+{
+    auto capabilities = discoverCapabilities(config);
+    const auto poweroff = discoverPoweroffCapability(config.poweroffCommand);
+    capabilities.root.insert("poweroff", QJsonObject{
+        {"available", poweroff.available},
+        {"detail", poweroff.detail},
+    });
+    return capabilities;
+}
 
 RuntimeIntervals defaultRuntimeIntervals()
 {
@@ -266,67 +243,6 @@ QJsonObject configSaveResult(bool ok, const QString& message, const QString& det
     };
 }
 
-bool requestSystemPoweroff(const QString& configOverride, QString* detail)
-{
-    // Config-level override takes precedence over env var (useful for dry-run testing
-    // where env var inheritance through background processes is unreliable).
-    const QString overrideCommand = !configOverride.trimmed().isEmpty()
-        ? configOverride.trimmed()
-        : qEnvironmentVariable("BEENUT_POWEROFF_COMMAND").trimmed();
-    if (!overrideCommand.isEmpty()) {
-        const QStringList parts = QProcess::splitCommand(overrideCommand);
-        if (parts.isEmpty()) {
-            if (detail != nullptr) {
-                *detail = "BEENUT_POWEROFF_COMMAND is empty after parsing";
-            }
-            return false;
-        }
-        const QString program = parts.first();
-        const QStringList arguments = parts.mid(1);
-        QString commandDetail;
-        if (runCommand(program, arguments, &commandDetail)) {
-            if (detail != nullptr) {
-                *detail = QString("override: %1").arg(overrideCommand);
-            }
-            return true;
-        }
-        if (detail != nullptr) {
-            *detail = QString("override failed: %1").arg(commandDetail);
-        }
-        return false;
-    }
-
-#ifdef Q_OS_LINUX
-    const QVector<QPair<QString, QStringList>> commands{
-        {"/usr/bin/sudo", {"-n", "/usr/bin/systemctl", "poweroff"}},
-        {"/usr/bin/sudo", {"-n", "/bin/systemctl", "poweroff"}},
-        {"/usr/bin/sudo", {"-n", "/usr/sbin/poweroff"}},
-        {"/usr/bin/sudo", {"-n", "/sbin/poweroff"}},
-        {"/usr/bin/systemctl", {"poweroff"}},
-        {"/bin/systemctl", {"poweroff"}},
-    };
-#else
-    const QVector<QPair<QString, QStringList>> commands{
-        {"/usr/bin/sudo", {"-n", "/sbin/shutdown", "-h", "now"}},
-    };
-#endif
-    QStringList failures;
-    for (const auto& command : commands) {
-        QString commandDetail;
-        if (runCommand(command.first, command.second, &commandDetail)) {
-            if (detail != nullptr) {
-                *detail = QString("%1 %2").arg(command.first, command.second.join(' '));
-            }
-            return true;
-        }
-        failures.append(commandDetail);
-    }
-    if (detail != nullptr) {
-        *detail = failures.join(" | ");
-    }
-    return false;
-}
-
 AppRuntime::AppRuntime(const QString& configPath, const QString& runtimeMode, QObject* parent)
     : QObject(parent)
     , configPath_(configPath)
@@ -340,7 +256,7 @@ AppRuntime::AppRuntime(const QString& configPath, const QString& runtimeMode, QO
         config_.model.engine = "mock";
         qputenv("BEENUT_GPIO_BACKEND", "mock");
     }
-    capabilities_ = discoverCapabilities(config_);
+    capabilities_ = discoverRuntimeCapabilities(config_);
     state_.safeMode = config_.safeMode;
     state_.selectedPartType = config_.counting.selectedPartType;
 
@@ -530,7 +446,7 @@ void AppRuntime::setupConnections()
         state_.gpio = gpio_->status();
         state_.gpioDetail = gpio_->detail();
         state_.lightOn = gpio_->lightOn();
-        capabilities_ = discoverCapabilities(config_);
+        capabilities_ = discoverRuntimeCapabilities(config_);
         updateCameraPowerMode();
         control_->broadcastCapabilities(capabilities_);
         control_->broadcastConfigSaveResult(configSaveResult(true, "Config saved and applied"));
@@ -552,7 +468,7 @@ void AppRuntime::setupConnections()
     });
 
     QObject::connect(control_.get(), &ControlServer::capabilitiesRefreshRequested, this, [&]() {
-        capabilities_ = discoverCapabilities(config_);
+        capabilities_ = discoverRuntimeCapabilities(config_);
         control_->broadcastCapabilities(capabilities_);
     });
 

@@ -7,6 +7,7 @@ add_library(beenut_service_core STATIC
   gstreamer_camera.cpp
   hardware_discovery.cpp
   onnx_yolo_engine.cpp
+  power_control.cpp
   service_state.cpp
 )
 

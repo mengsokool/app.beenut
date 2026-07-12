@@ -232,9 +232,9 @@ class _PartCatalogEditorState extends State<PartCatalogEditor> {
                   args: {'count': parts.length.toString()},
                 ),
                 style: TextStyle(
-                  fontSize: 14,
+                  fontSize: 13,
                   fontWeight: FontWeight.w600,
-                  color: scheme.onSurface,
+                  color: scheme.onSurfaceVariant,
                   letterSpacing: 0,
                 ),
               ),

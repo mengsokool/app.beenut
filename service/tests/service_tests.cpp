@@ -338,6 +338,12 @@ void testPoweroffConfigOverride()
     expect(detail.contains("override:"), "poweroff config override should report override detail");
 }
 
+void testPoweroffCapabilityOverride()
+{
+    const auto capability = beenut::discoverPoweroffCapability("/usr/bin/env true");
+    expect(capability.available, "executable poweroff override should be reported as available");
+}
+
 }  // namespace
 
 int main()
@@ -355,6 +361,7 @@ int main()
     testGpioBackendValidation();
     testPoweroffCommandOverride();
     testPoweroffConfigOverride();
+    testPoweroffCapabilityOverride();
     std::cout << "service_tests passed\n";
     return 0;
 }
