@@ -5,6 +5,8 @@ import '../../../core/theme.dart';
 import '../../common/widgets.dart';
 import '../widgets/file_picker.dart';
 
+enum ModelSettingsSection { model, counting, service }
+
 class ModelSettingsTab extends StatelessWidget {
   const ModelSettingsTab({
     super.key,
@@ -13,6 +15,7 @@ class ModelSettingsTab extends StatelessWidget {
     required this.capabilities,
     required this.enabled,
     required this.onSave,
+    this.section = ModelSettingsSection.model,
   });
 
   final MachineConfig config;
@@ -20,6 +23,7 @@ class ModelSettingsTab extends StatelessWidget {
   final HardwareCapabilities capabilities;
   final bool enabled;
   final ValueChanged<MachineConfig> onSave;
+  final ModelSettingsSection section;
 
   void _update(ModelSettings model) =>
       onSave(config.copyWithModelSettings(model));
@@ -81,193 +85,198 @@ class ModelSettingsTab extends StatelessWidget {
 
     return Column(
       children: [
-        SettingsGroup(
-          title: I18n.t(context, 'model_runtime'),
-          icon: Icons.memory_outlined,
-          children: [
-            ChoiceCardsRow(
-              options: [
-                runtimeOption(
-                  'onnx',
-                  'ONNX',
-                  I18n.t(context, 'run_onnx_general'),
-                  Icons.memory_outlined,
-                ),
-                runtimeOption(
-                  'hailo',
-                  'Hailo',
-                  I18n.t(context, 'run_hailo_production'),
-                  Icons.developer_board_outlined,
-                ),
-                runtimeOption(
-                  'mock',
-                  'Mock',
-                  I18n.t(context, 'run_mock_ui'),
-                  Icons.science_outlined,
-                ),
-              ],
-              value: engine,
-              enabled: enabled,
-              onSelected: (value) => _update(model.copyWith(engine: value)),
-            ),
-          ],
-        ),
-        SettingsGroup(
-          title: I18n.t(context, 'model_source'),
-          icon: Icons.folder_open_outlined,
-          children: [
-            PathSettingRow(
-              label: engine == 'hailo' ? 'Hailo HEF path' : 'ONNX model path',
-              description: I18n.t(context, 'select_model_desc'),
-              value: modelPath,
-              buttonLabel: I18n.t(context, 'select_model_btn'),
-              enabled: enabled,
-              onBrowse: () {
-                _openPicker(context, 'model', modelPath, (path) {
-                  if (engine == 'hailo') {
-                    _update(model.copyWith(hefPath: path));
-                  } else {
-                    _update(model.copyWith(modelPath: path));
-                  }
-                });
-              },
-            ),
-            SelectSettingRow(
-              label: 'Labels',
-              description: I18n.t(context, 'detect_class_names'),
-              value: labelsMode == 'auto' ? 'Auto detect' : 'Custom file',
-              options: const ['Auto detect', 'Custom file'],
-              enabled: enabled,
-              onSelected: (value) => _update(
-                model.copyWith(
-                  labelsMode: value == 'Custom file' ? 'custom' : 'auto',
-                ),
+        if (section == ModelSettingsSection.model)
+          SettingsGroup(
+            title: I18n.t(context, 'model_runtime'),
+            icon: Icons.memory_outlined,
+            children: [
+              ChoiceCardsRow(
+                options: [
+                  runtimeOption(
+                    'onnx',
+                    'ONNX',
+                    I18n.t(context, 'run_onnx_general'),
+                    Icons.memory_outlined,
+                  ),
+                  runtimeOption(
+                    'hailo',
+                    'Hailo',
+                    I18n.t(context, 'run_hailo_production'),
+                    Icons.developer_board_outlined,
+                  ),
+                  runtimeOption(
+                    'mock',
+                    'Mock',
+                    I18n.t(context, 'run_mock_ui'),
+                    Icons.science_outlined,
+                  ),
+                ],
+                value: engine,
+                enabled: enabled,
+                onSelected: (value) => _update(model.copyWith(engine: value)),
               ),
-            ),
-            if (labelsMode == 'custom')
+            ],
+          ),
+        if (section == ModelSettingsSection.model)
+          SettingsGroup(
+            title: I18n.t(context, 'model_source'),
+            icon: Icons.folder_open_outlined,
+            children: [
               PathSettingRow(
-                label: 'Labels path',
-                description: I18n.t(context, 'labels_override_desc'),
-                value: customLabelsPath,
-                buttonLabel: I18n.t(context, 'select_labels_btn'),
+                label: engine == 'hailo' ? 'Hailo HEF path' : 'ONNX model path',
+                description: '',
+                value: modelPath,
+                buttonLabel: I18n.t(context, 'select_model_btn'),
                 enabled: enabled,
                 onBrowse: () {
-                  _openPicker(context, 'labels', customLabelsPath, (path) {
-                    _update(
-                      model.copyWith(labelsPath: path, labelsMode: 'custom'),
-                    );
+                  _openPicker(context, 'model', modelPath, (path) {
+                    if (engine == 'hailo') {
+                      _update(model.copyWith(hefPath: path));
+                    } else {
+                      _update(model.copyWith(modelPath: path));
+                    }
                   });
                 },
-              )
-            else
-              _ModelLabelsPreviewRow(
-                labels: state.modelLabels,
-                detail: state.modelDetail,
-                mode: labelsMode,
               ),
-            if (labelsMode == 'custom')
-              _ModelLabelsPreviewRow(
-                labels: state.modelLabels,
-                detail: state.modelDetail,
-                mode: labelsMode,
+              SelectSettingRow(
+                label: 'Labels',
+                description: '',
+                value: labelsMode == 'auto' ? 'Auto detect' : 'Custom file',
+                options: const ['Auto detect', 'Custom file'],
+                enabled: enabled,
+                onSelected: (value) => _update(
+                  model.copyWith(
+                    labelsMode: value == 'Custom file' ? 'custom' : 'auto',
+                  ),
+                ),
               ),
-          ],
-        ),
-        SettingsGroup(
-          title: I18n.t(context, 'model_tuning'),
-          description: I18n.t(context, 'model_tuning_desc'),
-          icon: Icons.tune_outlined,
-          collapsible: true,
-          initiallyExpanded: false,
-          children: [
-            DecimalStepperSettingRow(
-              label: 'Confidence',
-              value: model.confidenceThreshold,
-              min: 0.1,
-              max: 0.95,
-              step: 0.01,
-              enabled: enabled,
-              onChanged: (value) =>
-                  _update(model.copyWith(confidenceThreshold: value)),
-            ),
-            DecimalStepperSettingRow(
-              label: 'NMS',
-              value: model.nmsThreshold,
-              min: 0.1,
-              max: 0.95,
-              step: 0.01,
-              enabled: enabled,
-              onChanged: (value) =>
-                  _update(model.copyWith(nmsThreshold: value)),
-            ),
-            StepperSettingRow(
-              label: 'Max Inference FPS',
-              description: I18n.t(context, 'max_fps_desc'),
-              value: model.maxFps.toInt(),
-              min: 1,
-              max: 30,
-              enabled: enabled,
-              unit: 'fps',
-              onChanged: (value) =>
-                  _update(model.copyWith(maxFps: value.toDouble())),
-            ),
-            StepperSettingRow(
-              label: 'Model Input Size',
-              description: I18n.t(context, 'input_size_desc'),
-              value: model.inputSize,
-              min: 64,
-              max: 2048,
-              step: 32,
-              enabled: enabled,
-              unit: 'px',
-              onChanged: (value) => _update(model.copyWith(inputSize: value)),
-            ),
-          ],
-        ),
-        SettingsGroup(
-          title: I18n.t(context, 'counting_behavior'),
-          icon: Icons.filter_alt_outlined,
-          children: [
-            StepperSettingRow(
-              label: I18n.t(context, 'stabilization_frames'),
-              description: I18n.t(context, 'stabilization_frames_desc'),
-              value: counting.stableFrames,
-              min: 1,
-              max: 30,
-              enabled: enabled,
-              onChanged: (value) =>
-                  _updateCounting(counting.copyWith(stableFrames: value)),
-            ),
-            StepperSettingRow(
-              label: I18n.t(context, 'max_timeout'),
-              description: I18n.t(context, 'max_timeout_desc'),
-              value: counting.timeoutMs,
-              unit: 'ms',
-              min: 500,
-              max: 20000,
-              step: 100,
-              enabled: enabled,
-              onChanged: (value) =>
-                  _updateCounting(counting.copyWith(timeoutMs: value)),
-            ),
-          ],
-        ),
-        SettingsGroup(
-          title: I18n.t(context, 'safety_fallback'),
-          description: I18n.t(context, 'safety_fallback_desc'),
-          icon: Icons.shield_outlined,
-          collapsible: true,
-          initiallyExpanded: false,
-          children: [
-            SwitchSettingRow(
-              label: I18n.t(context, 'force_safe_mode'),
-              description: I18n.t(context, 'force_safe_mode_desc'),
-              value: config.safeMode,
-              enabled: enabled,
-              onChanged: _updateSafeMode,
-            ),
-          ],
-        ),
+              if (labelsMode == 'custom')
+                PathSettingRow(
+                  label: 'Labels path',
+                  description: '',
+                  value: customLabelsPath,
+                  buttonLabel: I18n.t(context, 'select_labels_btn'),
+                  enabled: enabled,
+                  onBrowse: () {
+                    _openPicker(context, 'labels', customLabelsPath, (path) {
+                      _update(
+                        model.copyWith(labelsPath: path, labelsMode: 'custom'),
+                      );
+                    });
+                  },
+                )
+              else
+                _ModelLabelsPreviewRow(
+                  labels: state.modelLabels,
+                  detail: state.modelDetail,
+                  mode: labelsMode,
+                ),
+              if (labelsMode == 'custom')
+                _ModelLabelsPreviewRow(
+                  labels: state.modelLabels,
+                  detail: state.modelDetail,
+                  mode: labelsMode,
+                ),
+            ],
+          ),
+        if (section == ModelSettingsSection.model)
+          SettingsGroup(
+            title: I18n.t(context, 'model_tuning'),
+            description: I18n.t(context, 'model_tuning_desc'),
+            icon: Icons.tune_outlined,
+            collapsible: true,
+            initiallyExpanded: false,
+            children: [
+              DecimalStepperSettingRow(
+                label: 'Confidence',
+                value: model.confidenceThreshold,
+                min: 0.1,
+                max: 0.95,
+                step: 0.01,
+                enabled: enabled,
+                onChanged: (value) =>
+                    _update(model.copyWith(confidenceThreshold: value)),
+              ),
+              DecimalStepperSettingRow(
+                label: 'NMS',
+                value: model.nmsThreshold,
+                min: 0.1,
+                max: 0.95,
+                step: 0.01,
+                enabled: enabled,
+                onChanged: (value) =>
+                    _update(model.copyWith(nmsThreshold: value)),
+              ),
+              StepperSettingRow(
+                label: 'Max inference FPS',
+                description: '',
+                value: model.maxFps.toInt(),
+                min: 1,
+                max: 30,
+                enabled: enabled,
+                unit: 'fps',
+                onChanged: (value) =>
+                    _update(model.copyWith(maxFps: value.toDouble())),
+              ),
+              StepperSettingRow(
+                label: 'Model input size',
+                description: '',
+                value: model.inputSize,
+                min: 64,
+                max: 2048,
+                step: 32,
+                enabled: enabled,
+                unit: 'px',
+                onChanged: (value) => _update(model.copyWith(inputSize: value)),
+              ),
+            ],
+          ),
+        if (section == ModelSettingsSection.counting)
+          SettingsGroup(
+            title: I18n.t(context, 'counting_behavior'),
+            icon: Icons.filter_alt_outlined,
+            children: [
+              StepperSettingRow(
+                label: I18n.t(context, 'stabilization_frames'),
+                description: '',
+                value: counting.stableFrames,
+                min: 1,
+                max: 30,
+                enabled: enabled,
+                onChanged: (value) =>
+                    _updateCounting(counting.copyWith(stableFrames: value)),
+              ),
+              StepperSettingRow(
+                label: I18n.t(context, 'max_timeout'),
+                description: '',
+                value: counting.timeoutMs,
+                unit: 'ms',
+                min: 500,
+                max: 20000,
+                step: 100,
+                enabled: enabled,
+                onChanged: (value) =>
+                    _updateCounting(counting.copyWith(timeoutMs: value)),
+              ),
+            ],
+          ),
+        if (section == ModelSettingsSection.service)
+          SettingsGroup(
+            title: I18n.t(context, 'safety_fallback'),
+            description: I18n.t(context, 'safety_fallback_desc'),
+            icon: Icons.shield_outlined,
+            collapsible: true,
+            initiallyExpanded: false,
+            children: [
+              SwitchSettingRow(
+                label: I18n.t(context, 'force_safe_mode'),
+                description: '',
+                value: config.safeMode,
+                enabled: enabled,
+                onChanged: _updateSafeMode,
+              ),
+            ],
+          ),
       ],
     );
   }
@@ -410,7 +419,7 @@ class _AllClassesDialogState extends State<_AllClassesDialog> {
     return AlertDialog(
       title: Text(
         'Model classes (${widget.labels.length})',
-        style: TextStyle(fontSize: 16, fontWeight: FontWeight.w700),
+        style: TextStyle(fontSize: 16, fontWeight: FontWeight.w600),
       ),
       content: SizedBox(
         width: 620,
@@ -437,7 +446,7 @@ class _AllClassesDialogState extends State<_AllClassesDialog> {
           onPressed: () => Navigator.of(context).pop(),
           child: Text(
             I18n.t(context, 'close'),
-            style: TextStyle(fontWeight: FontWeight.w700),
+            style: TextStyle(fontWeight: FontWeight.w500),
           ),
         ),
       ],
@@ -475,7 +484,7 @@ class _ClassChip extends StatelessWidget {
               ? scheme.onSurfaceVariant
               : scheme.onTertiaryContainer,
           fontSize: 10,
-          fontWeight: FontWeight.w700,
+          fontWeight: FontWeight.w500,
         ),
       ),
     );

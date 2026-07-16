@@ -3,7 +3,7 @@ import '../../core/models.dart';
 import '../../core/service_client.dart';
 import '../../core/system_permissions.dart';
 import '../../core/i18n.dart';
-import '../../core/theme.dart';
+import '../../core/workbench_tokens.dart';
 import 'count_panel.dart';
 import 'part_selector.dart';
 import 'preview_pane.dart';
@@ -31,14 +31,11 @@ class _KioskPageState extends State<KioskPage> {
 
   @override
   Widget build(BuildContext context) {
-    final scheme = Theme.of(context).colorScheme;
+    final tokens = context.workbenchColors;
     final state = widget.snapshot.state;
     final parts = widget.snapshot.config.partTypes
         .where((part) => part.enabled)
         .toList();
-    final selected =
-        parts.where((part) => part.id == state.selectedPartType).firstOrNull ??
-        parts.firstOrNull;
     final hasFault =
         !widget.snapshot.connected ||
         widget.cameraPermission.blocksCamera ||
@@ -48,12 +45,14 @@ class _KioskPageState extends State<KioskPage> {
         state.model == 'error' ||
         state.model == 'missing';
     final statusColor = state.previewPaused
-        ? scheme.onSurfaceVariant
+        ? tokens.muted
         : hasFault
-        ? scheme.error
+        ? tokens.danger
+        : state.countTestRunning
+        ? tokens.info
         : state.trayPresent
-        ? scheme.tertiary
-        : scheme.primary;
+        ? tokens.success
+        : tokens.actionText;
     final title = widget.cameraPermission.blocksCamera
         ? I18n.t(context, 'camera_permission_denied')
         : state.previewPaused
@@ -71,23 +70,22 @@ class _KioskPageState extends State<KioskPage> {
         ? I18n.t(context, 'paused')
         : hasFault
         ? I18n.t(context, 'diagnostic_mode')
-        : (state.trayPresent
-              ? I18n.t(context, 'items_unit')
-              : selected?.name ?? '');
+        : I18n.t(context, 'items_unit');
 
     return Stack(
       children: [
         ColoredBox(
-          color: Theme.of(context).colorScheme.surface,
+          color: tokens.canvas,
           child: LayoutBuilder(
             builder: (context, constraints) {
-              final isLandscape = constraints.maxWidth > constraints.maxHeight;
-              final rightColumnWidth =
-                  constraints.maxWidth - constraints.maxHeight - 16;
+              final availableRailWidth =
+                  constraints.maxWidth -
+                  constraints.maxHeight -
+                  WorkbenchSpace.x3;
               final compact =
-                  !isLandscape ||
-                  rightColumnWidth < 180 ||
-                  constraints.maxHeight < 200;
+                  constraints.maxWidth < 760 ||
+                  constraints.maxWidth <= constraints.maxHeight ||
+                  availableRailWidth < 300;
 
               if (compact) {
                 return _buildCompactLayout(
@@ -130,25 +128,34 @@ class _KioskPageState extends State<KioskPage> {
     required Color statusColor,
   }) {
     return Padding(
-      padding: const EdgeInsets.all(12),
-      child: Row(
-        crossAxisAlignment: CrossAxisAlignment.stretch,
-        children: [
-          AspectRatio(aspectRatio: 1.0, child: _previewPane()),
-          const SizedBox(width: 14),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.stretch,
-              children: [
-                _partSelector(parts),
-                const SizedBox(height: 14),
-                Expanded(child: _countPanel(title, subtitle, statusColor)),
-                const SizedBox(height: 14),
-                _footerButtons(context),
-              ],
-            ),
-          ),
-        ],
+      padding: const EdgeInsets.all(WorkbenchSpace.x3),
+      child: LayoutBuilder(
+        builder: (context, constraints) {
+          final previewSize = constraints.maxHeight;
+          return Row(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              SizedBox.square(
+                key: const ValueKey('kiosk-preview'),
+                dimension: previewSize,
+                child: _previewPane(),
+              ),
+              const SizedBox(width: WorkbenchSpace.x3),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.stretch,
+                  children: [
+                    _partSelector(parts),
+                    const SizedBox(height: WorkbenchSpace.x3),
+                    Expanded(child: _countPanel(title, subtitle, statusColor)),
+                    const SizedBox(height: WorkbenchSpace.x3),
+                    _footerButtons(context),
+                  ],
+                ),
+              ),
+            ],
+          );
+        },
       ),
     );
   }
@@ -161,42 +168,30 @@ class _KioskPageState extends State<KioskPage> {
     required Color statusColor,
     required BoxConstraints constraints,
   }) {
-    // Adaptive layout: Calculate maximum available height for the preview pane
-    // to prevent vertical overflow on short screens while guaranteeing w-full on tall screens.
-    // Total non-preview elements height ~ 300px (padding, margins, selector, counter, buttons)
-    final maxPreviewWidth = constraints.maxWidth - 32;
-    final maxPreviewHeight = constraints.maxHeight - 300;
-    final previewSize = maxPreviewWidth.clamp(
-      0.0,
-      maxPreviewHeight > 0 ? maxPreviewHeight : 0.0,
-    );
+    final countHeight = (constraints.maxHeight * 0.22).clamp(120.0, 180.0);
 
     return Padding(
-      padding: const EdgeInsets.all(16),
+      padding: const EdgeInsets.all(WorkbenchSpace.x3),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          // 1. Preview Pane at the top
-          Center(
-            child: SizedBox(
-              width: previewSize,
-              height: previewSize,
-              child: _previewPane(),
-            ),
-          ),
-          // 2. Counter centered vertically in the remaining space
           Expanded(
             child: Center(
-              child: SizedBox(
-                width: double.infinity,
-                height: 120,
-                child: _countPanel(title, subtitle, statusColor),
+              child: AspectRatio(
+                key: const ValueKey('kiosk-preview'),
+                aspectRatio: 1,
+                child: _previewPane(),
               ),
             ),
           ),
-          // 3. Selector and ButtonGroup at the bottom
+          const SizedBox(height: WorkbenchSpace.x3),
           _partSelector(parts),
-          const SizedBox(height: 16),
+          const SizedBox(height: WorkbenchSpace.x2),
+          SizedBox(
+            height: countHeight,
+            child: _countPanel(title, subtitle, statusColor),
+          ),
+          const SizedBox(height: WorkbenchSpace.x2),
           _footerButtons(context),
         ],
       ),
@@ -252,38 +247,34 @@ class _KioskPageState extends State<KioskPage> {
     return Row(
       children: [
         Expanded(child: _settingsButton()),
-        const SizedBox(width: 14),
-        Expanded(child: _powerButton(context)),
+        const SizedBox(width: WorkbenchSpace.x2),
+        Expanded(child: _pauseButton(context)),
       ],
     );
   }
 
   Widget _settingsButton() {
     final label = I18n.t(context, 'settings_title');
-    final scheme = Theme.of(context).colorScheme;
     return Tooltip(
       message: label,
       child: Semantics(
         button: true,
         label: label,
         child: SizedBox(
-          height: 52,
-          child: IconButton.filled(
+          key: const ValueKey('kiosk-settings-action'),
+          height: WorkbenchMetric.operatorControlHeight,
+          child: OutlinedButton.icon(
             onPressed: widget.onOpenSettings,
             icon: const Icon(Icons.settings_outlined, size: 18),
-            style: IconButton.styleFrom(
-              foregroundColor: scheme.onPrimary,
-              backgroundColor: scheme.primary,
-              shape: BeenutTheme.controlShape,
-            ),
+            label: Text(label),
           ),
         ),
       ),
     );
   }
 
-  Widget _powerButton(BuildContext context) {
-    final scheme = Theme.of(context).colorScheme;
+  Widget _pauseButton(BuildContext context) {
+    final tokens = context.workbenchColors;
     final paused = widget.snapshot.state.previewPaused;
     final label = paused
         ? I18n.t(context, 'resume_preview')
@@ -294,16 +285,20 @@ class _KioskPageState extends State<KioskPage> {
         button: true,
         label: label,
         child: SizedBox(
-          height: 52,
-          child: IconButton.filled(
-            onPressed: () => widget.client.setPreviewPaused(!paused),
-            icon: Icon(paused ? Icons.play_arrow : Icons.pause, size: 20),
-            style: IconButton.styleFrom(
-              foregroundColor: paused ? scheme.onPrimary : scheme.onSecondary,
-              backgroundColor: paused ? scheme.primary : scheme.secondary,
-              shape: BeenutTheme.controlShape,
-            ),
-          ),
+          key: const ValueKey('kiosk-pause-action'),
+          height: WorkbenchMetric.operatorControlHeight,
+          child: paused
+              ? FilledButton.icon(
+                  onPressed: () => widget.client.setPreviewPaused(false),
+                  icon: const Icon(Icons.play_arrow, size: 18),
+                  label: Text(label),
+                )
+              : OutlinedButton.icon(
+                  onPressed: () => widget.client.setPreviewPaused(true),
+                  icon: const Icon(Icons.pause, size: 18),
+                  label: Text(label),
+                  style: OutlinedButton.styleFrom(foregroundColor: tokens.ink),
+                ),
         ),
       ),
     );

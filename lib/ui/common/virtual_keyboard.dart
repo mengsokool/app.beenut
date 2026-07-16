@@ -153,7 +153,7 @@ class _BeenutFullscreenKeyboardState extends State<BeenutFullscreenKeyboard> {
                     : I18n.t(context, 'edit_target_name_en'),
                 style: TextStyle(
                   fontSize: isSmallScreen ? 11 : 13,
-                  fontWeight: FontWeight.w700,
+                  fontWeight: FontWeight.w600,
                   color: BeenutTheme.inkColor(context),
                 ),
               ),
@@ -196,7 +196,7 @@ class _BeenutFullscreenKeyboardState extends State<BeenutFullscreenKeyboard> {
                           _textController.text,
                           style: TextStyle(
                             fontSize: previewFontSize,
-                            fontWeight: FontWeight.w600,
+                            fontWeight: FontWeight.w400,
                             color: BeenutTheme.inkColor(context),
                           ),
                         ),
@@ -337,7 +337,7 @@ class _BeenutFullscreenKeyboardState extends State<BeenutFullscreenKeyboard> {
                 label,
                 style: TextStyle(
                   fontSize: height < 40 ? 11 : 14,
-                  fontWeight: FontWeight.w600,
+                  fontWeight: FontWeight.w500,
                   color: BeenutTheme.inkColor(context),
                 ),
               ),
@@ -391,7 +391,7 @@ class _BeenutFullscreenKeyboardState extends State<BeenutFullscreenKeyboard> {
                     label,
                     style: TextStyle(
                       fontSize: height < 40 ? 10 : 12,
-                      fontWeight: FontWeight.w700,
+                      fontWeight: FontWeight.w500,
                       color:
                           textColor ??
                           (isPressed

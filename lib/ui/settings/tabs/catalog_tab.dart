@@ -3,6 +3,8 @@ import 'package:flutter/material.dart';
 import '../../../core/models.dart';
 import '../../../core/i18n.dart';
 import '../../../core/theme.dart';
+import '../../../core/workbench_tokens.dart';
+import '../../common/setting_controls.dart';
 import '../widgets/target_edit_dialog.dart';
 
 class PartCatalogEditor extends StatefulWidget {
@@ -133,7 +135,7 @@ class _PartCatalogEditorState extends State<PartCatalogEditor> {
             onPressed: () => Navigator.of(context).pop(),
             child: Text(
               actionLabel,
-              style: TextStyle(fontWeight: FontWeight.w600),
+              style: TextStyle(fontWeight: FontWeight.w500),
             ),
           ),
         ],
@@ -178,7 +180,7 @@ class _PartCatalogEditorState extends State<PartCatalogEditor> {
                 : null,
             child: Text(
               confirmLabel,
-              style: TextStyle(fontWeight: FontWeight.w600),
+              style: TextStyle(fontWeight: FontWeight.w500),
             ),
           ),
         ],
@@ -215,81 +217,47 @@ class _PartCatalogEditorState extends State<PartCatalogEditor> {
 
   @override
   Widget build(BuildContext context) {
-    final scheme = Theme.of(context).colorScheme;
-    return Padding(
-      padding: const EdgeInsets.symmetric(vertical: 8),
+    final tokens = context.workbenchColors;
+    return Material(
+      color: tokens.surface,
+      shape: RoundedRectangleBorder(
+        borderRadius: BeenutTheme.radiusPanel,
+        side: BorderSide(color: tokens.line),
+      ),
+      clipBehavior: Clip.antiAlias,
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          // 1. Targets Header Toolbar
-          Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-            children: [
-              Text(
-                I18n.t(
-                  context,
-                  'targets_to_count',
-                  args: {'count': parts.length.toString()},
-                ),
-                style: TextStyle(
-                  fontSize: 13,
-                  fontWeight: FontWeight.w600,
-                  color: scheme.onSurfaceVariant,
-                  letterSpacing: 0,
-                ),
-              ),
-              FilledButton.icon(
-                onPressed: widget.enabled ? _addPartManually : null,
-                icon: const Icon(Icons.add, size: 16),
-                label: Text(I18n.t(context, 'add_target')),
-                style: FilledButton.styleFrom(
-                  minimumSize: const Size(0, 36),
-                  padding: const EdgeInsets.symmetric(
-                    horizontal: 16,
-                    vertical: 8,
-                  ),
-                  textStyle: const TextStyle(
-                    fontFamily: BeenutTheme.fontFamily,
-                    fontFamilyFallback: BeenutTheme.fontFamilyFallback,
-                    fontSize: 12,
-                    fontWeight: FontWeight.w600,
-                  ),
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.all(Radius.circular(4)),
-                  ),
-                ),
-              ),
-            ],
+          _TargetListToolbar(
+            countLabel: I18n.t(
+              context,
+              'targets_to_count',
+              args: {'count': parts.length.toString()},
+            ),
+            addLabel: I18n.t(context, 'add_target'),
+            onAdd: widget.enabled ? _addPartManually : null,
           ),
-          const SizedBox(height: 14),
-
-          // 2. Targets Reorderable List
+          Divider(height: 1, color: tokens.lineSubtle),
           if (parts.isEmpty)
-            Container(
-              padding: const EdgeInsets.symmetric(vertical: 48),
-              alignment: Alignment.center,
-              decoration: BoxDecoration(
-                color: scheme.surfaceContainer,
-                borderRadius: BorderRadius.all(Radius.circular(4)),
-                border: Border.all(
-                  color: scheme.outlineVariant.withValues(alpha: 0.3),
-                  style: BorderStyle.solid,
-                ),
+            Padding(
+              padding: const EdgeInsets.symmetric(
+                horizontal: WorkbenchSpace.x4,
+                vertical: WorkbenchSpace.x8,
               ),
               child: Text(
                 I18n.t(context, 'no_targets_found'),
-                style: TextStyle(
-                  fontSize: 13,
-                  color: BeenutTheme.mutedColor(context),
-                  fontWeight: FontWeight.w500,
-                ),
+                textAlign: TextAlign.center,
+                style: Theme.of(
+                  context,
+                ).textTheme.bodyMedium?.copyWith(color: tokens.muted),
               ),
             )
           else
-            ReorderableListView(
+            ReorderableListView.builder(
               shrinkWrap: true,
               physics: const NeverScrollableScrollPhysics(),
               buildDefaultDragHandles: false,
+              itemCount: parts.length,
               onReorderItem: (oldIndex, newIndex) {
                 setState(() {
                   final item = parts.removeAt(oldIndex);
@@ -297,49 +265,25 @@ class _PartCatalogEditorState extends State<PartCatalogEditor> {
                 });
                 _save();
               },
-              children: [
-                for (var index = 0; index < parts.length; index++)
-                  Padding(
-                    key: ValueKey(parts[index].id),
-                    padding: EdgeInsets.only(
-                      bottom: index < parts.length - 1 ? 8.0 : 0.0,
+              itemBuilder: (context, index) {
+                final part = parts[index];
+                return Column(
+                  key: ValueKey(part.id),
+                  children: [
+                    _TargetListRow(
+                      part: part,
+                      dragHandle: _TargetDragHandle(
+                        index: index,
+                        enabled: widget.enabled,
+                      ),
+                      onToggleEnabled: () => _togglePartEnabled(part),
+                      onTap: () => _showEditDialog(context, part),
                     ),
-                    child: _TargetCardRow(
-                      part: parts[index],
-                      dragHandle: widget.enabled
-                          ? ReorderableDragStartListener(
-                              index: index,
-                              child: MouseRegion(
-                                cursor: SystemMouseCursors.grab,
-                                child: Padding(
-                                  padding: EdgeInsets.symmetric(
-                                    horizontal: 10,
-                                    vertical: 12,
-                                  ),
-                                  child: Icon(
-                                    Icons.drag_indicator,
-                                    size: 16,
-                                    color: scheme.onSurfaceVariant,
-                                  ),
-                                ),
-                              ),
-                            )
-                          : Padding(
-                              padding: const EdgeInsets.symmetric(
-                                horizontal: 10,
-                                vertical: 12,
-                              ),
-                              child: Icon(
-                                Icons.drag_indicator,
-                                size: 16,
-                                color: scheme.outlineVariant,
-                              ),
-                            ),
-                      onToggleEnabled: () => _togglePartEnabled(parts[index]),
-                      onTap: () => _showEditDialog(context, parts[index]),
-                    ),
-                  ),
-              ],
+                    if (index < parts.length - 1)
+                      Divider(height: 1, indent: 40, color: tokens.lineSubtle),
+                  ],
+                );
+              },
             ),
         ],
       ),
@@ -347,8 +291,74 @@ class _PartCatalogEditorState extends State<PartCatalogEditor> {
   }
 }
 
-class _TargetCardRow extends StatelessWidget {
-  const _TargetCardRow({
+class _TargetListToolbar extends StatelessWidget {
+  const _TargetListToolbar({
+    required this.countLabel,
+    required this.addLabel,
+    required this.onAdd,
+  });
+
+  final String countLabel;
+  final String addLabel;
+  final VoidCallback? onAdd;
+
+  @override
+  Widget build(BuildContext context) {
+    final tokens = context.workbenchColors;
+    return Padding(
+      padding: const EdgeInsets.symmetric(
+        horizontal: WorkbenchSpace.x3,
+        vertical: WorkbenchSpace.x2,
+      ),
+      child: Row(
+        children: [
+          Expanded(
+            child: Text(
+              countLabel,
+              style: Theme.of(
+                context,
+              ).textTheme.titleMedium?.copyWith(color: tokens.ink),
+            ),
+          ),
+          const SizedBox(width: WorkbenchSpace.x3),
+          FilledButton.icon(
+            onPressed: onAdd,
+            icon: const Icon(Icons.add, size: 15),
+            label: Text(addLabel),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _TargetDragHandle extends StatelessWidget {
+  const _TargetDragHandle({required this.index, required this.enabled});
+
+  final int index;
+  final bool enabled;
+
+  @override
+  Widget build(BuildContext context) {
+    final tokens = context.workbenchColors;
+    final handle = SizedBox(
+      width: 40,
+      child: Icon(
+        Icons.drag_indicator,
+        size: 16,
+        color: enabled ? tokens.muted : tokens.disabled,
+      ),
+    );
+    if (!enabled) return handle;
+    return ReorderableDragStartListener(
+      index: index,
+      child: MouseRegion(cursor: SystemMouseCursors.grab, child: handle),
+    );
+  }
+}
+
+class _TargetListRow extends StatelessWidget {
+  const _TargetListRow({
     required this.part,
     required this.dragHandle,
     required this.onToggleEnabled,
@@ -362,159 +372,117 @@ class _TargetCardRow extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final scheme = Theme.of(context).colorScheme;
-    return Material(
-      color: scheme.surfaceContainer,
-      shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.all(Radius.circular(4)),
-        side: BorderSide(color: scheme.outlineVariant),
-      ),
-      clipBehavior: Clip.antiAlias,
-      child: Opacity(
-        opacity: part.enabled ? 1.0 : 0.42,
-        child: Row(
-          children: [
-            // Left: Reorder drag handle
-            dragHandle,
-            Container(width: 1, height: 46, color: scheme.outlineVariant),
-            const SizedBox(width: 10),
-
-            // Middle: Clickable Body (Image + Details)
-            Expanded(
-              child: InkWell(
-                onTap: onTap,
-                borderRadius: BorderRadius.all(Radius.circular(4)),
-                child: Padding(
-                  padding: const EdgeInsets.symmetric(vertical: 12),
-                  child: Row(
-                    children: [
-                      // Center-Left: Image Preview
-                      Container(
-                        width: 48,
-                        height: 48,
-                        decoration: BoxDecoration(
-                          color: scheme.surfaceContainerLowest,
-                          border: Border.all(color: scheme.outlineVariant),
-                          borderRadius: BorderRadius.all(Radius.circular(4)),
-                        ),
-                        padding: const EdgeInsets.all(4),
-                        child: part.image.isEmpty
-                            ? Icon(
-                                Icons.hexagon_outlined,
-                                color: BeenutTheme.mutedColor(context),
-                              )
-                            : part.image.startsWith('assets/')
-                            ? Image.asset(
-                                part.image,
-                                fit: BoxFit.contain,
-                                errorBuilder: (context, error, stackTrace) =>
-                                    Icon(
-                                      Icons.hexagon_outlined,
-                                      color: BeenutTheme.mutedColor(context),
-                                    ),
-                              )
-                            : Image.file(
-                                File(part.image),
-                                fit: BoxFit.contain,
-                                errorBuilder: (context, error, stackTrace) =>
-                                    Icon(
-                                      Icons.hexagon_outlined,
-                                      color: BeenutTheme.mutedColor(context),
-                                    ),
-                              ),
-                      ),
-                      const SizedBox(width: 14),
-
-                      // Center: Details
-                      Expanded(
+    final tokens = context.workbenchColors;
+    return Row(
+      children: [
+        dragHandle,
+        Expanded(
+          child: Material(
+            color: Colors.transparent,
+            child: InkWell(
+              onTap: onTap,
+              child: Padding(
+                padding: const EdgeInsets.symmetric(
+                  vertical: WorkbenchSpace.x2,
+                ),
+                child: Row(
+                  children: [
+                    Opacity(
+                      opacity: part.enabled ? 1 : 0.45,
+                      child: _TargetThumbnail(part: part),
+                    ),
+                    const SizedBox(width: WorkbenchSpace.x3),
+                    Expanded(
+                      child: Opacity(
+                        opacity: part.enabled ? 1 : 0.55,
                         child: Column(
                           crossAxisAlignment: CrossAxisAlignment.start,
+                          mainAxisSize: MainAxisSize.min,
                           children: [
-                            Row(
-                              mainAxisSize: MainAxisSize.min,
-                              children: [
-                                Text(
-                                  part.name,
-                                  style: const TextStyle(
-                                    fontSize: 13.5,
-                                    fontWeight: FontWeight.w600,
-                                  ),
-                                ),
-                                const SizedBox(width: 8),
-                                Container(
-                                  padding: const EdgeInsets.symmetric(
-                                    horizontal: 8,
-                                    vertical: 2,
-                                  ),
-                                  decoration: BoxDecoration(
-                                    color: scheme.surfaceContainerHighest,
-                                    border: Border.all(
-                                      color: scheme.outlineVariant.withValues(
-                                        alpha: 0.4,
-                                      ),
-                                    ),
-                                    borderRadius: BorderRadius.all(
-                                      Radius.circular(4),
-                                    ),
-                                  ),
-                                  child: Text(
-                                    part.id,
-                                    style: TextStyle(
-                                      fontFamily: 'monospace',
-                                      fontSize: 9.5,
-                                      fontWeight: FontWeight.w500,
-                                      color: scheme.onSurfaceVariant,
-                                    ),
-                                  ),
-                                ),
-                              ],
+                            Text(
+                              part.name,
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                              style: Theme.of(context).textTheme.bodyMedium
+                                  ?.copyWith(fontWeight: FontWeight.w500),
                             ),
-                            if (part.keywords.isNotEmpty) ...[
-                              const SizedBox(height: 6),
-                              Wrap(
-                                spacing: 6,
-                                runSpacing: 6,
-                                children: [
-                                  for (final keyword in part.keywords)
-                                    Container(
-                                      padding: const EdgeInsets.symmetric(
-                                        horizontal: 8,
-                                        vertical: 2.5,
-                                      ),
-                                      decoration: BoxDecoration(
-                                        color: scheme.secondaryContainer,
-                                        borderRadius: BorderRadius.all(
-                                          Radius.circular(4),
-                                        ),
-                                      ),
-                                      child: Text(
-                                        keyword,
-                                        style: TextStyle(
-                                          fontSize: 9.5,
-                                          color: scheme.onSecondaryContainer,
-                                          fontWeight: FontWeight.w500,
-                                        ),
-                                      ),
+                            const SizedBox(height: WorkbenchSpace.x1),
+                            Text(
+                              part.keywords.isEmpty
+                                  ? I18n.t(context, 'target_no_model_classes')
+                                  : I18n.t(
+                                      context,
+                                      'target_model_classes',
+                                      args: {
+                                        'classes': part.keywords.join(', '),
+                                      },
                                     ),
-                                ],
-                              ),
-                            ],
+                              maxLines: 2,
+                              overflow: TextOverflow.ellipsis,
+                              style: Theme.of(context).textTheme.bodySmall
+                                  ?.copyWith(
+                                    color: part.keywords.isEmpty
+                                        ? tokens.warning
+                                        : tokens.muted,
+                                  ),
+                            ),
                           ],
                         ),
                       ),
-                    ],
-                  ),
+                    ),
+                    const SizedBox(width: WorkbenchSpace.x3),
+                    Icon(Icons.chevron_right, size: 16, color: tokens.muted),
+                  ],
                 ),
               ),
             ),
-            const SizedBox(width: 8),
-
-            // Right: Toggle Enabled Switch
-            Switch(value: part.enabled, onChanged: (_) => onToggleEnabled()),
-            const SizedBox(width: 14),
-          ],
+          ),
         ),
+        Padding(
+          padding: const EdgeInsets.symmetric(horizontal: WorkbenchSpace.x3),
+          child: WorkbenchSwitch(
+            value: part.enabled,
+            onChanged: (_) => onToggleEnabled(),
+          ),
+        ),
+      ],
+    );
+  }
+}
+
+class _TargetThumbnail extends StatelessWidget {
+  const _TargetThumbnail({required this.part});
+
+  final PartType part;
+
+  @override
+  Widget build(BuildContext context) {
+    final tokens = context.workbenchColors;
+    Widget fallback() =>
+        Icon(Icons.hexagon_outlined, size: 20, color: tokens.muted);
+
+    return Container(
+      width: 40,
+      height: 40,
+      padding: const EdgeInsets.all(4),
+      decoration: BoxDecoration(
+        color: tokens.raised,
+        border: Border.all(color: tokens.lineSubtle),
+        borderRadius: BeenutTheme.radiusSharp,
       ),
+      child: part.image.isEmpty
+          ? fallback()
+          : part.image.startsWith('assets/')
+          ? Image.asset(
+              part.image,
+              fit: BoxFit.contain,
+              errorBuilder: (context, error, stackTrace) => fallback(),
+            )
+          : Image.file(
+              File(part.image),
+              fit: BoxFit.contain,
+              errorBuilder: (context, error, stackTrace) => fallback(),
+            ),
     );
   }
 }

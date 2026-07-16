@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 
 import '../../core/theme.dart';
+import '../../core/workbench_tokens.dart';
 import 'setting_types.dart';
 
 class StatusPill extends StatelessWidget {
@@ -11,27 +12,27 @@ class StatusPill extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final scheme = Theme.of(context).colorScheme;
+    final tokens = context.workbenchColors;
     final colors = switch (tone) {
       RowTone.success => (
-        bg: scheme.tertiaryContainer,
-        fg: scheme.onTertiaryContainer,
-        border: scheme.tertiaryContainer,
+        bg: tokens.successSoft,
+        fg: tokens.success,
+        border: tokens.successSoft,
       ),
       RowTone.warning => (
-        bg: scheme.secondaryContainer,
-        fg: scheme.onSecondaryContainer,
-        border: scheme.secondaryContainer,
+        bg: tokens.warningSoft,
+        fg: tokens.warning,
+        border: tokens.warningSoft,
       ),
       RowTone.danger => (
-        bg: scheme.errorContainer,
-        fg: scheme.onErrorContainer,
-        border: scheme.errorContainer,
+        bg: tokens.dangerSoft,
+        fg: tokens.danger,
+        border: tokens.dangerSoft,
       ),
       RowTone.neutral => (
-        bg: scheme.surfaceContainerHighest,
-        fg: scheme.onSurfaceVariant,
-        border: scheme.outlineVariant,
+        bg: tokens.raised,
+        fg: tokens.muted,
+        border: tokens.line,
       ),
     };
     final showLoading =
@@ -42,7 +43,10 @@ class StatusPill extends StatelessWidget {
 
     return Container(
       constraints: const BoxConstraints(maxWidth: 230),
-      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+      padding: const EdgeInsets.symmetric(
+        horizontal: WorkbenchSpace.x2,
+        vertical: WorkbenchSpace.x1,
+      ),
       decoration: BoxDecoration(
         color: colors.bg,
         border: Border.all(color: colors.border),
@@ -72,7 +76,7 @@ class StatusPill extends StatelessWidget {
               style: TextStyle(
                 color: colors.fg,
                 fontSize: 12,
-                fontWeight: FontWeight.w700,
+                fontWeight: FontWeight.w500,
               ),
             ),
           ),
@@ -117,7 +121,7 @@ class StatusBadge extends StatelessWidget {
                 label,
                 style: TextStyle(
                   color: Colors.white,
-                  fontWeight: FontWeight.w700,
+                  fontWeight: FontWeight.w500,
                 ),
               ),
               Text(
@@ -150,7 +154,7 @@ class MetricChip extends StatelessWidget {
         '$label: $value',
         style: TextStyle(
           color: Colors.white,
-          fontWeight: FontWeight.w700,
+          fontWeight: FontWeight.w500,
           fontSize: 12,
         ),
       ),
@@ -171,7 +175,7 @@ class InfoRow extends StatelessWidget {
       child: Row(
         children: [
           Expanded(
-            child: Text(label, style: TextStyle(fontWeight: FontWeight.w700)),
+            child: Text(label, style: TextStyle(fontWeight: FontWeight.w500)),
           ),
           const SizedBox(width: 12),
           Flexible(
@@ -181,7 +185,7 @@ class InfoRow extends StatelessWidget {
               overflow: TextOverflow.ellipsis,
               style: TextStyle(
                 color: BeenutTheme.mutedColor(context),
-                fontWeight: FontWeight.w700,
+                fontWeight: FontWeight.w400,
               ),
             ),
           ),

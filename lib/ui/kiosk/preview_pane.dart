@@ -821,7 +821,7 @@ class _AnimatedDetectionsPainter extends CustomPainter {
       style: TextStyle(
         color: Colors.white.withValues(alpha: opacity),
         fontSize: focused ? 14 : 11,
-        fontWeight: FontWeight.w700,
+        fontWeight: FontWeight.w500,
       ),
     );
     final textPainter = TextPainter(

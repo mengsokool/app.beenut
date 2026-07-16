@@ -66,7 +66,7 @@ class ActionSettingRow extends StatelessWidget {
       fontFamily: BeenutTheme.fontFamily,
       fontFamilyFallback: BeenutTheme.fontFamilyFallback,
       fontSize: 11,
-      fontWeight: FontWeight.w700,
+      fontWeight: FontWeight.w500,
     ),
     shape: RoundedRectangleBorder(
       borderRadius: BorderRadius.all(Radius.circular(4)),
@@ -80,7 +80,7 @@ class ActionSettingRow extends StatelessWidget {
       fontFamily: BeenutTheme.fontFamily,
       fontFamilyFallback: BeenutTheme.fontFamilyFallback,
       fontSize: 11,
-      fontWeight: FontWeight.w700,
+      fontWeight: FontWeight.w500,
     ),
     shape: RoundedRectangleBorder(
       borderRadius: BorderRadius.all(Radius.circular(4)),

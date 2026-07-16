@@ -1,11 +1,13 @@
 import 'package:flutter/material.dart';
 
 import '../../core/theme.dart';
+import '../../core/workbench_tokens.dart';
 
 BoxDecoration panelDecoration(BuildContext context) {
-  final scheme = Theme.of(context).colorScheme;
+  final tokens = context.workbenchColors;
   return BoxDecoration(
-    color: scheme.surfaceContainer,
+    color: tokens.surface,
     borderRadius: BeenutTheme.radiusPanel,
+    border: Border.all(color: tokens.line),
   );
 }

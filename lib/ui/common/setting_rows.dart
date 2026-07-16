@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 
 import '../../core/theme.dart';
 import '../../core/i18n.dart';
+import '../../core/workbench_tokens.dart';
 import 'setting_primitives.dart';
 
 class IconInfoRow extends StatelessWidget {
@@ -60,23 +61,20 @@ class _SelectSettingRowState extends State<SelectSettingRow> {
 
   @override
   Widget build(BuildContext context) {
-    final scheme = Theme.of(context).colorScheme;
+    final tokens = context.workbenchColors;
     return SettingRowShell(
       label: widget.label,
       description: widget.description,
       trailing: MenuAnchor(
         controller: _menuController,
         style: MenuStyle(
-          backgroundColor: WidgetStatePropertyAll(scheme.surfaceContainerHigh),
+          backgroundColor: WidgetStatePropertyAll(tokens.raised),
           surfaceTintColor: const WidgetStatePropertyAll(Colors.transparent),
-          elevation: const WidgetStatePropertyAll(3),
-          shadowColor: WidgetStatePropertyAll(
-            Colors.black.withValues(alpha: 0.12),
-          ),
+          elevation: const WidgetStatePropertyAll(2),
           shape: WidgetStatePropertyAll(
             RoundedRectangleBorder(
-              borderRadius: BorderRadius.all(Radius.circular(4)),
-              side: BorderSide(color: scheme.outlineVariant),
+              borderRadius: BeenutTheme.radiusPanel,
+              side: BorderSide(color: tokens.line),
             ),
           ),
           minimumSize: const WidgetStatePropertyAll(Size(150, 0)),
@@ -93,7 +91,7 @@ class _SelectSettingRowState extends State<SelectSettingRow> {
                 _menuController.close();
               },
               style: ButtonStyle(
-                minimumSize: const WidgetStatePropertyAll(Size(150, 48)),
+                minimumSize: const WidgetStatePropertyAll(Size(150, 40)),
                 padding: const WidgetStatePropertyAll(
                   EdgeInsets.symmetric(horizontal: 12),
                 ),
@@ -109,13 +107,14 @@ class _SelectSettingRowState extends State<SelectSettingRow> {
                 style: TextStyle(
                   fontSize: 11.5,
                   fontWeight: FontWeight.w500,
-                  color: scheme.onSurface,
+                  color: tokens.ink,
                 ),
               ),
             ),
         ],
-        child: GestureDetector(
-          onTap: widget.enabled
+        child: SelectorValue(
+          value: widget.value,
+          onPressed: widget.enabled
               ? () {
                   if (_menuController.isOpen) {
                     _menuController.close();
@@ -124,7 +123,6 @@ class _SelectSettingRowState extends State<SelectSettingRow> {
                   }
                 }
               : null,
-          child: SelectorValue(value: widget.value),
         ),
       ),
     );
@@ -235,7 +233,10 @@ class SwitchSettingRow extends StatelessWidget {
     return SettingRowShell(
       label: label,
       description: description,
-      trailing: Switch(value: value, onChanged: enabled ? onChanged : null),
+      trailing: WorkbenchSwitch(
+        value: value,
+        onChanged: enabled ? onChanged : null,
+      ),
     );
   }
 }
@@ -262,8 +263,16 @@ class PathSettingRow extends StatelessWidget {
   Widget build(BuildContext context) {
     return SettingRowShell(
       label: label,
-      description:
-          '$description\n${value.isEmpty ? I18n.t(context, 'no_file_selected') : value}',
+      description: description,
+      supporting: SelectableText(
+        value.isEmpty ? I18n.t(context, 'no_file_selected') : value,
+        maxLines: 2,
+        style: BeenutTheme.dataTextStyle(context).copyWith(
+          color: value.isEmpty
+              ? context.workbenchColors.muted
+              : context.workbenchColors.ink,
+        ),
+      ),
       trailing: OutlinedButton.icon(
         onPressed: enabled ? onBrowse : null,
         icon: Icon(Icons.folder_open_outlined, size: 14),
@@ -275,7 +284,7 @@ class PathSettingRow extends StatelessWidget {
             fontFamily: BeenutTheme.fontFamily,
             fontFamilyFallback: BeenutTheme.fontFamilyFallback,
             fontSize: 12,
-            fontWeight: FontWeight.w700,
+            fontWeight: FontWeight.w500,
           ),
           shape: RoundedRectangleBorder(
             borderRadius: BorderRadius.all(Radius.circular(4)),

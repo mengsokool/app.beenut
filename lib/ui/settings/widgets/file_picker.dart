@@ -337,7 +337,7 @@ class _FilePickerDialogState extends State<FilePickerDialog> {
                 I18n.t(context, 'external_storage_detected'),
                 style: TextStyle(
                   fontSize: 14,
-                  fontWeight: FontWeight.bold,
+                  fontWeight: FontWeight.w600,
                   color: scheme.onSurface,
                   fontFamily: BeenutTheme.fontFamily,
                   fontFamilyFallback: BeenutTheme.fontFamilyFallback,
@@ -353,7 +353,7 @@ class _FilePickerDialogState extends State<FilePickerDialog> {
                 I18n.t(context, 'file_label', args: {'name': fileName}),
                 style: TextStyle(
                   fontSize: 11,
-                  fontWeight: FontWeight.bold,
+                  fontWeight: FontWeight.w500,
                   color: scheme.onSurface,
                   fontFamily: BeenutTheme.fontFamily,
                   fontFamilyFallback: BeenutTheme.fontFamilyFallback,
@@ -422,7 +422,7 @@ class _FilePickerDialogState extends State<FilePickerDialog> {
                 I18n.t(context, 'copy_to_kiosk_btn'),
                 style: TextStyle(
                   fontSize: 11,
-                  fontWeight: FontWeight.bold,
+                  fontWeight: FontWeight.w500,
                   fontFamily: BeenutTheme.fontFamily,
                   fontFamilyFallback: BeenutTheme.fontFamilyFallback,
                 ),
@@ -526,7 +526,7 @@ class _FilePickerDialogState extends State<FilePickerDialog> {
                       title,
                       style: TextStyle(
                         fontSize: 13,
-                        fontWeight: FontWeight.w700,
+                        fontWeight: FontWeight.w600,
                         color: scheme.onSurface,
                       ),
                     ),
@@ -582,7 +582,7 @@ class _FilePickerDialogState extends State<FilePickerDialog> {
                         'root',
                         style: TextStyle(
                           fontSize: 10,
-                          fontWeight: FontWeight.bold,
+                          fontWeight: FontWeight.w400,
                         ),
                       ),
                     ),
@@ -613,8 +613,8 @@ class _FilePickerDialogState extends State<FilePickerDialog> {
                           style: TextStyle(
                             fontSize: 10,
                             fontWeight: i == pathParts.length - 1
-                                ? FontWeight.w700
-                                : FontWeight.bold,
+                                ? FontWeight.w500
+                                : FontWeight.w400,
                           ),
                         ),
                       ),
@@ -655,7 +655,7 @@ class _FilePickerDialogState extends State<FilePickerDialog> {
                           item['label']!,
                           style: TextStyle(
                             fontSize: 9,
-                            fontWeight: FontWeight.w700,
+                            fontWeight: FontWeight.w500,
                             color: scheme.onSurface,
                           ),
                         ),
@@ -696,7 +696,7 @@ class _FilePickerDialogState extends State<FilePickerDialog> {
                           ),
                           style: TextStyle(
                             fontSize: 10,
-                            fontWeight: FontWeight.w600,
+                            fontWeight: FontWeight.w500,
                             color: scheme.onSurface,
                             fontFamily: BeenutTheme.fontFamily,
                             fontFamilyFallback: BeenutTheme.fontFamilyFallback,
@@ -884,7 +884,7 @@ class _FilePickerDialogState extends State<FilePickerDialog> {
                                       name,
                                       style: TextStyle(
                                         fontSize: 9,
-                                        fontWeight: FontWeight.bold,
+                                        fontWeight: FontWeight.w500,
                                         color: scheme.onSurface,
                                       ),
                                       maxLines: 2,
@@ -946,7 +946,7 @@ class _FilePickerDialogState extends State<FilePickerDialog> {
                                           name,
                                           style: TextStyle(
                                             fontSize: 12,
-                                            fontWeight: FontWeight.bold,
+                                            fontWeight: FontWeight.w500,
                                           ),
                                           maxLines: 1,
                                           overflow: TextOverflow.ellipsis,

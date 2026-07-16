@@ -164,7 +164,7 @@ class _ResourceHistoryChartState extends State<ResourceHistoryChart> {
             '$label ${value.toStringAsFixed(1)}$unit',
             style: TextStyle(
               fontSize: 11,
-              fontWeight: FontWeight.w800,
+              fontWeight: FontWeight.w500,
               color: BeenutTheme.inkColor(context),
             ),
           ),
@@ -216,7 +216,7 @@ class _ChartPanel extends StatelessWidget {
                       title,
                       style: TextStyle(
                         fontSize: 13,
-                        fontWeight: FontWeight.w800,
+                        fontWeight: FontWeight.w500,
                         color: BeenutTheme.inkColor(context),
                       ),
                     ),
@@ -225,7 +225,7 @@ class _ChartPanel extends StatelessWidget {
                       unitLabel,
                       style: TextStyle(
                         fontSize: 11,
-                        fontWeight: FontWeight.w700,
+                        fontWeight: FontWeight.w400,
                         color: scheme.onSurfaceVariant,
                       ),
                     ),

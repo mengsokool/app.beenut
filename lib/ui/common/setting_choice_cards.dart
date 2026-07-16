@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 
-import '../../core/theme.dart';
+import '../../core/workbench_tokens.dart';
 
 class ChoiceOption {
   const ChoiceOption({
@@ -34,88 +34,150 @@ class ChoiceCardsRow extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final scheme = Theme.of(context).colorScheme;
-    return Padding(
-      padding: const EdgeInsets.all(16),
-      child: IntrinsicHeight(
-        child: Row(
-          crossAxisAlignment: CrossAxisAlignment.stretch,
-          children: [
-            for (final option in options) ...[
-              Expanded(
-                child: Material(
-                  color: option.value == value
-                      ? scheme.primaryContainer.withValues(alpha: 0.25)
-                      : scheme.surfaceContainerLow,
-                  borderRadius: BorderRadius.all(Radius.circular(4)),
-                  clipBehavior: Clip.antiAlias,
-                  child: InkWell(
-                    onTap: enabled && option.available
-                        ? () => onSelected(option.value)
-                        : null,
-                    borderRadius: BorderRadius.all(Radius.circular(4)),
-                    child: Container(
-                      padding: const EdgeInsets.symmetric(
-                        horizontal: 16,
-                        vertical: 14,
-                      ),
-                      decoration: BoxDecoration(
-                        borderRadius: BorderRadius.all(Radius.circular(4)),
-                        border: Border.all(
-                          color: option.value == value
-                              ? scheme.primary
-                              : scheme.outlineVariant,
-                          width: option.value == value ? 1.5 : 1.0,
+    final line = context.workbenchColors.lineSubtle;
+    return Column(
+      children: [
+        for (int index = 0; index < options.length; index++) ...[
+          _ChoiceOptionRow(
+            option: options[index],
+            selected: options[index].value == value,
+            enabled: enabled && options[index].available,
+            onSelected: onSelected,
+          ),
+          if (index < options.length - 1) Divider(height: 1, color: line),
+        ],
+      ],
+    );
+  }
+}
+
+class _ChoiceOptionRow extends StatelessWidget {
+  const _ChoiceOptionRow({
+    required this.option,
+    required this.selected,
+    required this.enabled,
+    required this.onSelected,
+  });
+
+  final ChoiceOption option;
+  final bool selected;
+  final bool enabled;
+  final ValueChanged<String> onSelected;
+
+  @override
+  Widget build(BuildContext context) {
+    final tokens = context.workbenchColors;
+    final titleColor = !enabled
+        ? tokens.disabled
+        : selected
+        ? tokens.actionText
+        : tokens.ink;
+    final iconColor = !enabled
+        ? tokens.disabled
+        : selected
+        ? tokens.actionText
+        : tokens.muted;
+
+    return Semantics(
+      button: true,
+      selected: selected,
+      enabled: enabled,
+      child: Material(
+        color: selected ? tokens.actionSoft : Colors.transparent,
+        child: InkWell(
+          onTap: enabled ? () => onSelected(option.value) : null,
+          child: ConstrainedBox(
+            constraints: const BoxConstraints(minHeight: 56),
+            child: Padding(
+              padding: const EdgeInsets.symmetric(
+                horizontal: WorkbenchSpace.x3,
+                vertical: WorkbenchSpace.x2,
+              ),
+              child: Row(
+                children: [
+                  SettingChoiceIcon(icon: option.icon, color: iconColor),
+                  const SizedBox(width: WorkbenchSpace.x3),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Text(
+                          option.title,
+                          style: Theme.of(context).textTheme.bodyMedium
+                              ?.copyWith(
+                                color: titleColor,
+                                fontWeight: FontWeight.w500,
+                              ),
                         ),
-                      ),
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Icon(
-                            option.icon,
-                            size: 22,
-                            color: option.value == value
-                                ? scheme.primary
-                                : (option.available
-                                      ? scheme.onSurfaceVariant
-                                      : scheme.onSurfaceVariant.withValues(
-                                          alpha: 0.5,
-                                        )),
-                          ),
-                          const SizedBox(height: 10),
-                          Text(
-                            option.title,
-                            style: TextStyle(
-                              fontSize: 14,
-                              fontWeight: FontWeight.w600,
-                              color: option.value == value
-                                  ? scheme.onSurface
-                                  : (option.available
-                                        ? scheme.onSurface
-                                        : scheme.onSurfaceVariant),
-                            ),
-                          ),
-                          const SizedBox(height: 6),
+                        if (option.detail.isNotEmpty) ...[
+                          const SizedBox(height: WorkbenchSpace.x1),
                           Text(
                             option.detail,
-                            style: TextStyle(
-                              fontSize: 11.5,
-                              color: BeenutTheme.mutedColor(context),
-                              fontWeight: FontWeight.w500,
-                              height: 1.3,
-                            ),
+                            style: Theme.of(context).textTheme.bodySmall
+                                ?.copyWith(
+                                  color: enabled
+                                      ? tokens.muted
+                                      : tokens.disabled,
+                                ),
                           ),
                         ],
-                      ),
+                      ],
                     ),
                   ),
-                ),
+                  const SizedBox(width: WorkbenchSpace.x3),
+                  _ChoiceMark(selected: selected, enabled: enabled),
+                ],
               ),
-              if (option != options.last) const SizedBox(width: 12),
-            ],
-          ],
+            ),
+          ),
         ),
       ),
+    );
+  }
+}
+
+class SettingChoiceIcon extends StatelessWidget {
+  const SettingChoiceIcon({super.key, required this.icon, required this.color});
+
+  final IconData icon;
+  final Color color;
+
+  @override
+  Widget build(BuildContext context) {
+    return SizedBox(width: 24, child: Icon(icon, size: 18, color: color));
+  }
+}
+
+class _ChoiceMark extends StatelessWidget {
+  const _ChoiceMark({required this.selected, required this.enabled});
+
+  final bool selected;
+  final bool enabled;
+
+  @override
+  Widget build(BuildContext context) {
+    final tokens = context.workbenchColors;
+    final color = !enabled
+        ? tokens.disabled
+        : selected
+        ? tokens.actionText
+        : tokens.line;
+    return Container(
+      width: 16,
+      height: 16,
+      alignment: Alignment.center,
+      decoration: BoxDecoration(
+        shape: BoxShape.circle,
+        border: Border.all(color: color, width: selected ? 1.5 : 1),
+      ),
+      child: selected
+          ? Container(
+              width: 8,
+              height: 8,
+              decoration: BoxDecoration(color: color, shape: BoxShape.circle),
+            )
+          : null,
     );
   }
 }

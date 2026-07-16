@@ -1,0 +1,814 @@
+{
+  "schemaVersion": 2,
+  "generatedAt": "2026-07-16T14:11:48Z",
+  "title": "Design System: BeeNut Workbench",
+  "extensions": {
+    "colorMeta": {
+      "action-light": {
+        "role": "primary",
+        "displayName": "Roadway Amber",
+        "canonical": "#F4A900",
+        "tonalRamp": [
+          "#3B2400",
+          "#684000",
+          "#8A4B00",
+          "#B76A00",
+          "#D98900",
+          "#F4A900",
+          "#FFD36A",
+          "#FFF2CC"
+        ]
+      },
+      "action-light-hover": {
+        "role": "primary",
+        "displayName": "Roadway Amber Hover",
+        "canonical": "#D98900",
+        "tonalRamp": [
+          "#3B2400",
+          "#684000",
+          "#8A4B00",
+          "#B76A00",
+          "#D98900",
+          "#F4A900",
+          "#FFD36A",
+          "#FFF2CC"
+        ]
+      },
+      "action-light-active": {
+        "role": "primary",
+        "displayName": "Roadway Amber Active",
+        "canonical": "#C47A00",
+        "tonalRamp": [
+          "#3B2400",
+          "#684000",
+          "#8A4B00",
+          "#B76A00",
+          "#C47A00",
+          "#F4A900",
+          "#FFD36A",
+          "#FFF2CC"
+        ]
+      },
+      "action-soft-light": {
+        "role": "primary",
+        "displayName": "Amber Selection Wash",
+        "canonical": "#FFF2CC",
+        "tonalRamp": [
+          "#3B2400",
+          "#684000",
+          "#8A4B00",
+          "#B76A00",
+          "#D98900",
+          "#F4A900",
+          "#FFD36A",
+          "#FFF2CC"
+        ]
+      },
+      "action-text-light": {
+        "role": "primary",
+        "displayName": "Deep Amber Ink",
+        "canonical": "#8A4B00",
+        "tonalRamp": [
+          "#3B2400",
+          "#684000",
+          "#8A4B00",
+          "#B76A00",
+          "#D98900",
+          "#F4A900",
+          "#FFD36A",
+          "#FFF2CC"
+        ]
+      },
+      "action-focus-light": {
+        "role": "primary",
+        "displayName": "Deep Amber Focus",
+        "canonical": "#B76A00",
+        "tonalRamp": [
+          "#3B2400",
+          "#684000",
+          "#8A4B00",
+          "#B76A00",
+          "#D98900",
+          "#F4A900",
+          "#FFD36A",
+          "#FFF2CC"
+        ]
+      },
+      "action-dark": {
+        "role": "primary",
+        "displayName": "Illuminated Roadway Amber",
+        "canonical": "#FFC23D",
+        "tonalRamp": [
+          "#3B2400",
+          "#684000",
+          "#8A4B00",
+          "#B76A00",
+          "#D98900",
+          "#F4A900",
+          "#FFD36A",
+          "#FFF2CC"
+        ]
+      },
+      "action-dark-hover": {
+        "role": "primary",
+        "displayName": "Illuminated Amber Hover",
+        "canonical": "#FFD36A",
+        "tonalRamp": [
+          "#3B2400",
+          "#684000",
+          "#8A4B00",
+          "#B76A00",
+          "#D98900",
+          "#F4A900",
+          "#FFD36A",
+          "#FFF2CC"
+        ]
+      },
+      "on-action-light": {
+        "role": "neutral",
+        "displayName": "Asphalt Action Foreground",
+        "canonical": "#171717",
+        "tonalRamp": [
+          "#09090B",
+          "#171717",
+          "#27272A",
+          "#3F3F46",
+          "#71717A",
+          "#A1A1AA",
+          "#D4D4D8",
+          "#FAFAFA"
+        ]
+      },
+      "on-action-dark": {
+        "role": "neutral",
+        "displayName": "Asphalt Action Foreground Dark",
+        "canonical": "#171717",
+        "tonalRamp": [
+          "#09090B",
+          "#171717",
+          "#27272A",
+          "#3F3F46",
+          "#71717A",
+          "#A1A1AA",
+          "#D4D4D8",
+          "#FAFAFA"
+        ]
+      },
+      "canvas-light": {
+        "role": "neutral",
+        "displayName": "Concrete Canvas",
+        "canonical": "#F3F4F6",
+        "tonalRamp": [
+          "#09090B",
+          "#171717",
+          "#27272A",
+          "#3F3F46",
+          "#71717A",
+          "#A1A1AA",
+          "#D4D4D8",
+          "#FAFAFA"
+        ]
+      },
+      "surface-light": {
+        "role": "neutral",
+        "displayName": "Light Surface",
+        "canonical": "#FFFFFF",
+        "tonalRamp": [
+          "#09090B",
+          "#171717",
+          "#27272A",
+          "#3F3F46",
+          "#71717A",
+          "#A1A1AA",
+          "#D4D4D8",
+          "#FAFAFA"
+        ]
+      },
+      "surface-raised-light": {
+        "role": "neutral",
+        "displayName": "Light Raised Surface",
+        "canonical": "#F9FAFB",
+        "tonalRamp": [
+          "#09090B",
+          "#171717",
+          "#27272A",
+          "#3F3F46",
+          "#71717A",
+          "#A1A1AA",
+          "#D4D4D8",
+          "#FAFAFA"
+        ]
+      },
+      "ink-light": {
+        "role": "neutral",
+        "displayName": "Asphalt Ink",
+        "canonical": "#171717",
+        "tonalRamp": [
+          "#09090B",
+          "#171717",
+          "#27272A",
+          "#3F3F46",
+          "#71717A",
+          "#A1A1AA",
+          "#D4D4D8",
+          "#FAFAFA"
+        ]
+      },
+      "muted-light": {
+        "role": "neutral",
+        "displayName": "Light Muted Ink",
+        "canonical": "#52525B",
+        "tonalRamp": [
+          "#09090B",
+          "#171717",
+          "#27272A",
+          "#3F3F46",
+          "#71717A",
+          "#A1A1AA",
+          "#D4D4D8",
+          "#FAFAFA"
+        ]
+      },
+      "disabled-light": {
+        "role": "neutral",
+        "displayName": "Light Disabled Ink",
+        "canonical": "#A1A1AA",
+        "tonalRamp": [
+          "#09090B",
+          "#171717",
+          "#27272A",
+          "#3F3F46",
+          "#71717A",
+          "#A1A1AA",
+          "#D4D4D8",
+          "#FAFAFA"
+        ]
+      },
+      "line-light": {
+        "role": "neutral",
+        "displayName": "Light Structural Line",
+        "canonical": "#D4D4D8",
+        "tonalRamp": [
+          "#09090B",
+          "#171717",
+          "#27272A",
+          "#3F3F46",
+          "#71717A",
+          "#A1A1AA",
+          "#D4D4D8",
+          "#FAFAFA"
+        ]
+      },
+      "line-subtle-light": {
+        "role": "neutral",
+        "displayName": "Light Subtle Line",
+        "canonical": "#E4E4E7",
+        "tonalRamp": [
+          "#09090B",
+          "#171717",
+          "#27272A",
+          "#3F3F46",
+          "#71717A",
+          "#A1A1AA",
+          "#D4D4D8",
+          "#FAFAFA"
+        ]
+      },
+      "canvas-dark": {
+        "role": "neutral",
+        "displayName": "Dark Asphalt Canvas",
+        "canonical": "#0F0F0F",
+        "tonalRamp": [
+          "#09090B",
+          "#171717",
+          "#27272A",
+          "#3F3F46",
+          "#71717A",
+          "#A1A1AA",
+          "#D4D4D8",
+          "#FAFAFA"
+        ]
+      },
+      "surface-dark": {
+        "role": "neutral",
+        "displayName": "Dark Surface",
+        "canonical": "#18181B",
+        "tonalRamp": [
+          "#09090B",
+          "#171717",
+          "#27272A",
+          "#3F3F46",
+          "#71717A",
+          "#A1A1AA",
+          "#D4D4D8",
+          "#FAFAFA"
+        ]
+      },
+      "surface-raised-dark": {
+        "role": "neutral",
+        "displayName": "Dark Raised Surface",
+        "canonical": "#27272A",
+        "tonalRamp": [
+          "#09090B",
+          "#171717",
+          "#27272A",
+          "#3F3F46",
+          "#71717A",
+          "#A1A1AA",
+          "#D4D4D8",
+          "#FAFAFA"
+        ]
+      },
+      "ink-dark": {
+        "role": "neutral",
+        "displayName": "Dark Ink",
+        "canonical": "#FAFAFA",
+        "tonalRamp": [
+          "#09090B",
+          "#171717",
+          "#27272A",
+          "#3F3F46",
+          "#71717A",
+          "#A1A1AA",
+          "#D4D4D8",
+          "#FAFAFA"
+        ]
+      },
+      "muted-dark": {
+        "role": "neutral",
+        "displayName": "Dark Muted Ink",
+        "canonical": "#A1A1AA",
+        "tonalRamp": [
+          "#09090B",
+          "#171717",
+          "#27272A",
+          "#3F3F46",
+          "#71717A",
+          "#A1A1AA",
+          "#D4D4D8",
+          "#FAFAFA"
+        ]
+      },
+      "disabled-dark": {
+        "role": "neutral",
+        "displayName": "Dark Disabled Ink",
+        "canonical": "#71717A",
+        "tonalRamp": [
+          "#09090B",
+          "#171717",
+          "#27272A",
+          "#3F3F46",
+          "#71717A",
+          "#A1A1AA",
+          "#D4D4D8",
+          "#FAFAFA"
+        ]
+      },
+      "line-dark": {
+        "role": "neutral",
+        "displayName": "Dark Structural Line",
+        "canonical": "#3F3F46",
+        "tonalRamp": [
+          "#09090B",
+          "#171717",
+          "#27272A",
+          "#3F3F46",
+          "#71717A",
+          "#A1A1AA",
+          "#D4D4D8",
+          "#FAFAFA"
+        ]
+      },
+      "success-light": {
+        "role": "tertiary",
+        "displayName": "Operational Green",
+        "canonical": "#166534",
+        "tonalRamp": [
+          "#052E16",
+          "#14532D",
+          "#166534",
+          "#15803D",
+          "#16A34A",
+          "#4ADE80",
+          "#BBF7D0",
+          "#F0FDF4"
+        ]
+      },
+      "success-soft-light": {
+        "role": "tertiary",
+        "displayName": "Operational Green Wash",
+        "canonical": "#DCFCE7",
+        "tonalRamp": [
+          "#052E16",
+          "#14532D",
+          "#166534",
+          "#15803D",
+          "#16A34A",
+          "#4ADE80",
+          "#BBF7D0",
+          "#F0FDF4"
+        ]
+      },
+      "success-dark": {
+        "role": "tertiary",
+        "displayName": "Operational Green Dark",
+        "canonical": "#4ADE80",
+        "tonalRamp": [
+          "#052E16",
+          "#14532D",
+          "#166534",
+          "#15803D",
+          "#16A34A",
+          "#4ADE80",
+          "#BBF7D0",
+          "#F0FDF4"
+        ]
+      },
+      "warning-light": {
+        "role": "secondary",
+        "displayName": "Hazard Orange",
+        "canonical": "#9A3412",
+        "tonalRamp": [
+          "#431407",
+          "#7C2D12",
+          "#9A3412",
+          "#C2410C",
+          "#EA580C",
+          "#FB923C",
+          "#FED7AA",
+          "#FFF7ED"
+        ]
+      },
+      "warning-soft-light": {
+        "role": "secondary",
+        "displayName": "Hazard Orange Wash",
+        "canonical": "#FFEDD5",
+        "tonalRamp": [
+          "#431407",
+          "#7C2D12",
+          "#9A3412",
+          "#C2410C",
+          "#EA580C",
+          "#FB923C",
+          "#FED7AA",
+          "#FFF7ED"
+        ]
+      },
+      "warning-dark": {
+        "role": "secondary",
+        "displayName": "Hazard Orange Dark",
+        "canonical": "#FB923C",
+        "tonalRamp": [
+          "#431407",
+          "#7C2D12",
+          "#9A3412",
+          "#C2410C",
+          "#EA580C",
+          "#FB923C",
+          "#FED7AA",
+          "#FFF7ED"
+        ]
+      },
+      "danger-light": {
+        "role": "tertiary",
+        "displayName": "Fault Red",
+        "canonical": "#B91C1C",
+        "tonalRamp": [
+          "#450A0A",
+          "#7F1D1D",
+          "#991B1B",
+          "#B91C1C",
+          "#DC2626",
+          "#F87171",
+          "#FECACA",
+          "#FEF2F2"
+        ]
+      },
+      "danger-soft-light": {
+        "role": "tertiary",
+        "displayName": "Fault Red Wash",
+        "canonical": "#FEE2E2",
+        "tonalRamp": [
+          "#450A0A",
+          "#7F1D1D",
+          "#991B1B",
+          "#B91C1C",
+          "#DC2626",
+          "#F87171",
+          "#FECACA",
+          "#FEF2F2"
+        ]
+      },
+      "danger-dark": {
+        "role": "tertiary",
+        "displayName": "Fault Red Dark",
+        "canonical": "#F87171",
+        "tonalRamp": [
+          "#450A0A",
+          "#7F1D1D",
+          "#991B1B",
+          "#B91C1C",
+          "#DC2626",
+          "#F87171",
+          "#FECACA",
+          "#FEF2F2"
+        ]
+      },
+      "info-light": {
+        "role": "tertiary",
+        "displayName": "Diagnostic Blue",
+        "canonical": "#1D4ED8",
+        "tonalRamp": [
+          "#172554",
+          "#1E3A8A",
+          "#1E40AF",
+          "#1D4ED8",
+          "#2563EB",
+          "#60A5FA",
+          "#BFDBFE",
+          "#EFF6FF"
+        ]
+      },
+      "info-soft-light": {
+        "role": "tertiary",
+        "displayName": "Diagnostic Blue Wash",
+        "canonical": "#DBEAFE",
+        "tonalRamp": [
+          "#172554",
+          "#1E3A8A",
+          "#1E40AF",
+          "#1D4ED8",
+          "#2563EB",
+          "#60A5FA",
+          "#BFDBFE",
+          "#EFF6FF"
+        ]
+      },
+      "info-dark": {
+        "role": "tertiary",
+        "displayName": "Diagnostic Blue Dark",
+        "canonical": "#60A5FA",
+        "tonalRamp": [
+          "#172554",
+          "#1E3A8A",
+          "#1E40AF",
+          "#1D4ED8",
+          "#2563EB",
+          "#60A5FA",
+          "#BFDBFE",
+          "#EFF6FF"
+        ]
+      },
+      "preview-black": {
+        "role": "neutral",
+        "displayName": "Preview Black",
+        "canonical": "#09090B",
+        "tonalRamp": [
+          "#09090B",
+          "#171717",
+          "#27272A",
+          "#3F3F46",
+          "#71717A",
+          "#A1A1AA",
+          "#D4D4D8",
+          "#FAFAFA"
+        ]
+      }
+    },
+    "typographyMeta": {
+      "count": {
+        "displayName": "Instrument Count",
+        "purpose": "The primary counting result only; tabular figures, weight 700."
+      },
+      "page-title": {
+        "displayName": "Page Title",
+        "purpose": "One major workspace title per screen."
+      },
+      "section-title": {
+        "displayName": "Section Title",
+        "purpose": "Local panel and settings-group hierarchy without visual heaviness."
+      },
+      "body": {
+        "displayName": "Body",
+        "purpose": "Default Thai and Latin interface copy at weight 400."
+      },
+      "label": {
+        "displayName": "Control Label",
+        "purpose": "Buttons, fields, tabs, navigation, and compact state labels."
+      },
+      "data": {
+        "displayName": "Machine Data",
+        "purpose": "Paths, pipelines, identifiers, dimensions, and diagnostic values."
+      }
+    },
+    "shadows": [
+      {
+        "name": "popup-light",
+        "value": "0 4px 8px rgba(15, 23, 42, 0.14)",
+        "purpose": "Menus, tooltips, and non-modal floating pickers in light theme."
+      },
+      {
+        "name": "popup-dark",
+        "value": "0 4px 8px rgba(0, 0, 0, 0.36)",
+        "purpose": "Menus, tooltips, and non-modal floating pickers in dark theme."
+      },
+      {
+        "name": "dialog-light",
+        "value": "0 8px 24px rgba(15, 23, 42, 0.20)",
+        "purpose": "Dialogs above a scrim in light theme; use without a decorative outer border."
+      },
+      {
+        "name": "dialog-dark",
+        "value": "0 8px 24px rgba(0, 0, 0, 0.48)",
+        "purpose": "Dialogs above a scrim in dark theme; use without a decorative outer border."
+      }
+    ],
+    "motion": [
+      {
+        "name": "state-fast",
+        "value": "100ms cubic-bezier(0.215, 0.61, 0.355, 1)",
+        "purpose": "Hover, press, focus, and compact color-state feedback."
+      },
+      {
+        "name": "state-standard",
+        "value": "160ms cubic-bezier(0.215, 0.61, 0.355, 1)",
+        "purpose": "Disclosure, selection, and small surface transitions."
+      },
+      {
+        "name": "state-slow",
+        "value": "220ms cubic-bezier(0.215, 0.61, 0.355, 1)",
+        "purpose": "Dialogs and larger state changes; never decorative entrances."
+      },
+      {
+        "name": "reduced-motion",
+        "value": "0ms linear",
+        "purpose": "Immediate layout and state changes when reduced motion is requested."
+      }
+    ],
+    "breakpoints": [
+      {
+        "name": "compact",
+        "value": "640px"
+      },
+      {
+        "name": "workbench",
+        "value": "960px"
+      },
+      {
+        "name": "wide",
+        "value": "1280px"
+      }
+    ]
+  },
+  "components": [
+    {
+      "name": "Primary Technician Button",
+      "kind": "button",
+      "refersTo": "button-primary-technician-light",
+      "description": "The single primary action in a technician-density region.",
+      "html": "<button class=\"ds-btn-primary\">Apply configuration</button>",
+      "css": ".ds-btn-primary { height: 36px; padding: 0 12px; border: 0; border-radius: 4px; background: #F4A900; color: #171717; font: 500 12px/1.3 'Noto Sans Thai', 'Noto Sans', sans-serif; transition: background 100ms cubic-bezier(0.215, 0.61, 0.355, 1); } .ds-btn-primary:hover { background: #D98900; } .ds-btn-primary:active { background: #C47A00; color: #171717; } .ds-btn-primary:focus-visible { outline: 2px solid #B76A00; outline-offset: 2px; } .ds-btn-primary:disabled { background: #D4D4D8; color: #71717A; }"
+    },
+    {
+      "name": "Secondary Button",
+      "kind": "button",
+      "refersTo": "button-secondary-technician-light",
+      "description": "A quiet alternative action with structural outline rather than elevation.",
+      "html": "<button class=\"ds-btn-secondary\">Cancel</button>",
+      "css": ".ds-btn-secondary { height: 36px; padding: 0 12px; border: 1px solid #D4D4D8; border-radius: 4px; background: #FFFFFF; color: #171717; font: 500 12px/1.3 'Noto Sans Thai', 'Noto Sans', sans-serif; transition: background 100ms cubic-bezier(0.215, 0.61, 0.355, 1), border-color 100ms cubic-bezier(0.215, 0.61, 0.355, 1); } .ds-btn-secondary:hover { background: #F9FAFB; border-color: #A1A1AA; } .ds-btn-secondary:active { background: #F3F4F6; } .ds-btn-secondary:focus-visible { outline: 2px solid #B76A00; outline-offset: 2px; }"
+    },
+    {
+      "name": "Workbench Field",
+      "kind": "input",
+      "refersTo": "field-technician-light",
+      "description": "A technician-density field with a persistent label and strong focus state.",
+      "html": "<label class=\"ds-field-label\">Camera index<input class=\"ds-field\" value=\"0\"></label>",
+      "css": ".ds-field-label { display: grid; gap: 4px; color: #52525B; font: 500 12px/1.3 'Noto Sans Thai', 'Noto Sans', sans-serif; } .ds-field { height: 36px; padding: 0 10px; border: 1px solid #D4D4D8; border-radius: 4px; background: #FFFFFF; color: #171717; font: 400 13px/1.45 'Noto Sans Thai', 'Noto Sans', sans-serif; } .ds-field:hover { border-color: #A1A1AA; } .ds-field:focus-visible { outline: 2px solid #B76A00; outline-offset: 1px; border-color: #B76A00; } .ds-field:disabled { background: #F3F4F6; color: #71717A; }"
+    },
+    {
+      "name": "Selected Navigation Item",
+      "kind": "nav",
+      "refersTo": "navigation-selected-light",
+      "description": "Current workbench location with an amber wash and accessible deep-amber interaction signal.",
+      "html": "<button class=\"ds-nav-item\"><span class=\"ds-nav-icon\">●</span><span>System health</span></button>",
+      "css": ".ds-nav-item { display: flex; align-items: center; gap: 8px; min-height: 36px; padding: 0 10px; border: 0; border-radius: 4px; background: #FFF2CC; color: #8A4B00; font: 500 12px/1.3 'Noto Sans Thai', 'Noto Sans', sans-serif; text-align: left; } .ds-nav-icon { color: #8A4B00; font-size: 10px; } .ds-nav-item:hover { background: #FFE3A3; } .ds-nav-item:focus-visible { outline: 2px solid #B76A00; outline-offset: 2px; }"
+    },
+    {
+      "name": "Healthy Status",
+      "kind": "chip",
+      "refersTo": "status-healthy-light",
+      "description": "Compact operational state with explicit text and metric.",
+      "html": "<span class=\"ds-status\"><span class=\"ds-status-dot\"></span>ready · 30.0 fps</span>",
+      "css": ".ds-status { display: inline-flex; align-items: center; gap: 6px; padding: 4px 8px; border-radius: 4px; background: #DCFCE7; color: #166534; font: 500 12px/1.3 'Noto Sans Thai', 'Noto Sans', sans-serif; } .ds-status-dot { width: 6px; height: 6px; border-radius: 999px; background: #16A34A; }"
+    },
+    {
+      "name": "System Status Row",
+      "kind": "custom",
+      "refersTo": "setting-row-technician",
+      "description": "Subsystem identity, compact state, and structured data without a prose description.",
+      "html": "<div class=\"ds-status-row\"><div class=\"ds-system\"><span class=\"ds-system-icon\">▣</span><div><strong>Camera</strong><small>Device index 0 · 1920 × 1080</small></div></div><span class=\"ds-row-state\">ready · 30.0 fps</span></div>",
+      "css": ".ds-status-row { display: flex; align-items: center; justify-content: space-between; gap: 16px; min-height: 56px; padding: 8px 12px; border-bottom: 1px solid #E4E4E7; background: #FFFFFF; color: #171717; font-family: 'Noto Sans Thai', 'Noto Sans', sans-serif; } .ds-system { display: flex; align-items: center; gap: 10px; min-width: 0; } .ds-system-icon { color: #8A4B00; font-size: 18px; } .ds-system strong { display: block; font-size: 13px; font-weight: 500; line-height: 1.4; } .ds-system small { display: block; margin-top: 2px; color: #52525B; font-size: 11px; font-weight: 400; line-height: 1.35; } .ds-row-state { flex: none; padding: 4px 8px; border-radius: 4px; background: #DCFCE7; color: #166534; font-size: 12px; font-weight: 500; }"
+    },
+    {
+      "name": "Workbench Panel",
+      "kind": "card",
+      "refersTo": "panel-light",
+      "description": "A flat structural container for divided rows, never a decorative nested card.",
+      "html": "<section class=\"ds-panel\"><h3>System readiness</h3><p>Camera, model, and runtime state</p></section>",
+      "css": ".ds-panel { padding: 16px; border: 1px solid #D4D4D8; border-radius: 6px; background: #FFFFFF; color: #171717; font-family: 'Noto Sans Thai', 'Noto Sans', sans-serif; } .ds-panel h3 { margin: 0; font-size: 14px; font-weight: 500; line-height: 1.4; } .ds-panel p { margin: 4px 0 0; color: #52525B; font-size: 13px; font-weight: 400; line-height: 1.45; }"
+    }
+  ],
+  "narrative": {
+    "northStar": "The Operator's Workbench",
+    "overview": "BeeNut Workbench is an instrument surface, not a consumer application and not a website inside a window. An operator uses it beside a running camera and counting machine, often at arm's length, under inconsistent ambient light, with only seconds to confirm that the count and hardware state are trustworthy. A technician uses the same product more densely to configure models, inspect diagnostics, and recover the appliance. Every visual decision must shorten those tasks and preserve confidence.\n\nThe system borrows the restraint of excellent native workbench applications: quiet typography, compact controls, clear alignment, structural dividers, and familiar interaction behavior. It does not imitate any one operating system. Flutter and Material may provide focus, input, menu, semantics, and accessibility behavior, but BeeNut owns all visible shape, color, spacing, typography, and state treatment.",
+    "keyCharacteristics": [
+      "Practical, precise, calm, durable, and field-ready.",
+      "Flat by default, with hierarchy carried by spacing, tone, and one-pixel dividers.",
+      "Information-dense without becoming visually heavy.",
+      "One sans-serif family for Thai and Latin interface text; monospace only for machine data.",
+      "Restrained roadway amber brand signal; semantic colors communicate operational state.",
+      "Keyboard, pointer, and touch behavior are equally complete.",
+      "Motion communicates state in 100–220 ms and disappears when reduced motion is requested."
+    ],
+    "rules": [
+      {
+        "name": "The Workbench Test",
+        "body": "If a visual choice attracts attention before the count, preview, current selection, or failure state, remove it.",
+        "section": "overview"
+      },
+      {
+        "name": "The Behavior Boundary Rule",
+        "body": "Material behavior is permitted; Material appearance is not the BeeNut public design language. No feature may depend on an unreviewed Material default for its visible design.",
+        "section": "overview"
+      },
+      {
+        "name": "The One Signal, One Meaning Rule",
+        "body": "Roadway amber means BeeNut interaction or current selection; green means operational success; hazard orange means warning. Never use these roles interchangeably.",
+        "section": "colors"
+      },
+      {
+        "name": "The Ten Percent Rule",
+        "body": "Saturated color occupies no more than roughly 10% of a normal workbench screen. The live preview and functional visualization overlays are exempt when the data requires color.",
+        "section": "colors"
+      },
+      {
+        "name": "The Contrast Rule",
+        "body": "Normal text and placeholder text must reach at least 4.5:1 against their surface; large text and non-text controls must reach at least 3:1. Color is always paired with a label, icon, shape, or state word.",
+        "section": "colors"
+      },
+      {
+        "name": "The Weight Budget Rule",
+        "body": "Weight 400 is the default, 500 marks controls and local hierarchy, 600 is limited to one major heading per region, and 700 is reserved for the main count or a genuinely critical value. Weight 800 and 900 are prohibited.",
+        "section": "typography"
+      },
+      {
+        "name": "The Sentence Case Rule",
+        "body": "Buttons, navigation, status labels, and headings use sentence case in Thai and English. Uppercase is allowed only for established technical abbreviations such as CPU, FPS, ONNX, and GPIO.",
+        "section": "typography"
+      },
+      {
+        "name": "The Data Is Not Description Rule",
+        "body": "Structured values are rendered as labels, status words, metrics, and key-value pairs. Never compress hardware or model data into a prose description merely to fit a row.",
+        "section": "typography"
+      },
+      {
+        "name": "The Flat-at-Rest Rule",
+        "body": "If a surface is part of normal page layout, its shadow is zero.",
+        "section": "elevation"
+      },
+      {
+        "name": "The Structural Depth Rule",
+        "body": "Use this order to create hierarchy: spacing first, tonal surface second, one-pixel line third, shadow last.",
+        "section": "elevation"
+      }
+    ],
+    "dos": [
+      "Do put the counting task first: count, live preview, target selection, and blocking system state win every hierarchy decision.",
+      "Do render hardware and model state as status, metrics, and aligned property data instead of prose descriptions.",
+      "Do use the 4 px spacing grid and the defined density metrics; operator controls are 48 px and technician controls are 32–36 px with adequate hit regions.",
+      "Do use weight 400 for normal text and weight 500 for buttons, navigation, field labels, and local hierarchy.",
+      "Do maintain readable Thai and Latin line metrics with the bundled Noto Sans variable fonts.",
+      "Do show visible keyboard focus, complete semantics, and touch-friendly hit areas on every interactive control.",
+      "Do test every component in light and dark themes, Thai and English, operator and technician density, and widths below 640 px and at or above 960 px.",
+      "Do keep recovery, retry, and degraded-mode actions visible near the state that requires them.",
+      "Do use skeleton or structural placeholders for content loading and compact progress indicators for bounded actions."
+    ],
+    "donts": [
+      "Don't add marketing-site flourishes. BeeNut is an appliance workbench, not a landing page.",
+      "Don't use over-rounded consumer app styling. Controls stop at 4 px, panels stop at 6 px, and pills are reserved for true chips or short states.",
+      "Don't use decorative motion. Motion must explain state, feedback, loading, or disclosure.",
+      "Don't hide controls required to operate, diagnose, retry, or recover the appliance.",
+      "Don't ship low-contrast diagnostics. Muted text, placeholders, dividers, and status information must remain readable in both themes.",
+      "Don't add any visual treatment that competes with the live preview or count status.",
+      "Don't use Material 3 typography, Cards, FilledButton styling, NavigationRail appearance, or surface-container names as the public BeeNut visual language.",
+      "Don't use weight 600 for ordinary row labels or weight 700 for button text. Weight 800 and 900 are forbidden.",
+      "Don't turn structured data into a description string or use ellipsis as the only way to access a machine value.",
+      "Don't place every setting, metric, or status in its own card, and never nest decorative cards.",
+      "Don't use gradient text, glassmorphism, decorative glows, diagonal stripe backgrounds, or wide soft shadows on bordered surfaces.",
+      "Don't add a colored side stripe thicker than one pixel to cards, list items, alerts, or callouts.",
+      "Don't use uppercase for ordinary labels, buttons, subtitles, or navigation.",
+      "Don't use green for selection, amber for success, or brand amber as the warning treatment; one signal has one meaning.",
+      "Don't open a modal when inline editing, disclosure, or progressive expansion can complete the task safely."
+    ]
+  }
+}

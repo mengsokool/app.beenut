@@ -163,12 +163,12 @@ class _HardwareTestTabState extends State<HardwareTestTab> {
             ActionSettingRow(
               icon: Icons.camera_alt_outlined,
               iconColor: scheme.primary,
-              label: 'Camera Pipeline',
+              label: 'Camera pipeline',
               description:
                   'Check active camera pipeline, capture FPS, and preview caps',
               actions: [
                 RowAction(
-                  label: 'Test Camera',
+                  label: 'Test camera',
                   primary: true,
                   onPressed: () => client.runDiagnostic('camera'),
                 ),
@@ -177,7 +177,7 @@ class _HardwareTestTabState extends State<HardwareTestTab> {
             ActionSettingRow(
               icon: Icons.psychology_outlined,
               iconColor: scheme.tertiary,
-              label: 'AI Runtime',
+              label: 'AI runtime',
               description:
                   'Check model runtime readiness and latest inference metrics',
               actions: [
@@ -191,7 +191,7 @@ class _HardwareTestTabState extends State<HardwareTestTab> {
             ActionSettingRow(
               icon: Icons.cable_outlined,
               iconColor: scheme.onSurfaceVariant,
-              label: 'GPIO Backend',
+              label: 'GPIO backend',
               description: 'Check sensor and relay backend state',
               actions: [
                 RowAction(
@@ -207,7 +207,7 @@ class _HardwareTestTabState extends State<HardwareTestTab> {
                     ? Icons.check_box_outlined
                     : Icons.error_outline,
                 iconColor: diagnostic.ok ? scheme.tertiary : scheme.error,
-                label: 'Last Diagnostic',
+                label: 'Last diagnostic',
                 description: diagnostic.detail,
                 value: '${diagnostic.target}: ${diagnostic.message}',
                 tone: diagnostic.ok ? RowTone.success : RowTone.danger,
@@ -224,7 +224,7 @@ class _HardwareTestTabState extends State<HardwareTestTab> {
             ActionSettingRow(
               icon: Icons.lightbulb_outline,
               iconColor: scheme.secondary,
-              label: 'LED Relay',
+              label: 'LED relay',
               description: 'Turn off/on lighting relay',
               actions: [
                 RowAction(
@@ -240,7 +240,7 @@ class _HardwareTestTabState extends State<HardwareTestTab> {
             ActionSettingRow(
               icon: Icons.inventory_2_outlined,
               iconColor: scheme.primary,
-              label: 'Tray Simulation',
+              label: 'Tray simulation',
               description: 'Simulate placing or pulling the tray',
               actions: [
                 RowAction(
@@ -256,7 +256,7 @@ class _HardwareTestTabState extends State<HardwareTestTab> {
             ActionSettingRow(
               icon: Icons.camera_alt_outlined,
               iconColor: scheme.tertiary,
-              label: 'Manual Count',
+              label: 'Manual count',
               description: state.countTestMessage.isEmpty
                   ? 'Trigger snapshot count verification sequence'
                   : state.countTestMessage,
@@ -282,7 +282,7 @@ class _HardwareTestTabState extends State<HardwareTestTab> {
             ActionSettingRow(
               icon: Icons.archive_outlined,
               iconColor: scheme.primary,
-              label: 'Diagnostics Bundle',
+              label: 'Diagnostics bundle',
               description:
                   (_maintenanceResult?.artifactPath.isNotEmpty ?? false)
                   ? _maintenanceResult!.artifactPath
@@ -300,7 +300,7 @@ class _HardwareTestTabState extends State<HardwareTestTab> {
             ActionSettingRow(
               icon: Icons.restore_outlined,
               iconColor: scheme.secondary,
-              label: 'Factory Reset',
+              label: 'Factory reset',
               description:
                   'Restore default runtime config while keeping models and device identity',
               actions: [
@@ -315,12 +315,12 @@ class _HardwareTestTabState extends State<HardwareTestTab> {
             ActionSettingRow(
               icon: Icons.system_update_alt_outlined,
               iconColor: scheme.tertiary,
-              label: 'USB Offline Update',
+              label: 'USB offline update',
               description:
                   'Find a beenut-update folder on an attached drive, validate it, then apply when ready',
               actions: [
                 RowAction(
-                  label: _runningUsbUpdate ? 'Checking...' : 'Dry Run',
+                  label: _runningUsbUpdate ? 'Checking...' : 'Dry run',
                   onPressed: _runningUsbUpdate
                       ? null
                       : () => unawaited(_runUsbUpdate(dryRun: true)),
@@ -342,7 +342,7 @@ class _HardwareTestTabState extends State<HardwareTestTab> {
                 iconColor: _maintenanceResult!.ok
                     ? scheme.tertiary
                     : scheme.error,
-                label: 'Maintenance Action',
+                label: 'Maintenance action',
                 description: _maintenanceResult!.detail,
                 value: _maintenanceResult!.message,
                 tone: _maintenanceResult!.ok ? RowTone.success : RowTone.danger,

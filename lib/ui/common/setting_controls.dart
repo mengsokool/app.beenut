@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 
 import '../../core/theme.dart';
+import '../../core/workbench_tokens.dart';
 
 class SettingIcon extends StatelessWidget {
   const SettingIcon({super.key, required this.icon, required this.color});
@@ -10,58 +11,63 @@ class SettingIcon extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final tokens = context.workbenchColors;
     return Container(
       width: 28,
       height: 28,
       decoration: BoxDecoration(
-        color: color.withValues(alpha: 0.12),
+        color: tokens.raised,
+        border: Border.all(color: tokens.lineSubtle),
         borderRadius: BeenutTheme.radiusSharp,
       ),
-      child: Icon(icon, color: color, size: 17),
+      child: Icon(icon, color: color, size: 16),
     );
   }
 }
 
 class SelectorValue extends StatelessWidget {
-  const SelectorValue({super.key, required this.value});
+  const SelectorValue({
+    super.key,
+    required this.value,
+    required this.onPressed,
+  });
 
   final String value;
+  final VoidCallback? onPressed;
 
   @override
   Widget build(BuildContext context) {
-    final theme = Theme.of(context);
-    final scheme = theme.colorScheme;
-    return Container(
-      width: 150,
-      height: 32,
-      padding: const EdgeInsets.symmetric(horizontal: 12),
-      decoration: BoxDecoration(
-        color: scheme.surfaceContainerHigh,
-        border: Border.all(color: scheme.outlineVariant),
-        borderRadius: BeenutTheme.radiusSharp,
-      ),
-      child: Row(
-        mainAxisAlignment: MainAxisAlignment.spaceBetween,
-        children: [
-          Expanded(
-            child: Text(
-              value,
-              maxLines: 1,
-              overflow: TextOverflow.ellipsis,
-              style: TextStyle(
-                fontSize: 12.5,
-                fontWeight: FontWeight.w500,
-                color: BeenutTheme.inkColor(context),
+    final tokens = context.workbenchColors;
+    return SizedBox(
+      width: 168,
+      height: WorkbenchMetric.technicianControlHeight,
+      child: OutlinedButton(
+        onPressed: onPressed,
+        style: OutlinedButton.styleFrom(
+          alignment: Alignment.centerLeft,
+          padding: const EdgeInsets.symmetric(horizontal: WorkbenchSpace.x3),
+          backgroundColor: tokens.surface,
+        ),
+        child: Row(
+          children: [
+            Expanded(
+              child: Text(
+                value,
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+                style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                  color: onPressed == null ? tokens.disabled : tokens.ink,
+                ),
               ),
             ),
-          ),
-          const SizedBox(width: 4),
-          Icon(
-            Icons.keyboard_arrow_down,
-            size: 16,
-            color: BeenutTheme.mutedColor(context),
-          ),
-        ],
+            const SizedBox(width: WorkbenchSpace.x1),
+            Icon(
+              Icons.keyboard_arrow_down,
+              size: 16,
+              color: onPressed == null ? tokens.disabled : tokens.muted,
+            ),
+          ],
+        ),
       ),
     );
   }
@@ -83,13 +89,12 @@ class StepperControl extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final theme = Theme.of(context);
-    final scheme = theme.colorScheme;
+    final tokens = context.workbenchColors;
     return Container(
-      height: 32,
+      height: WorkbenchMetric.technicianControlHeight,
       decoration: BoxDecoration(
-        color: scheme.surfaceContainerHigh,
-        border: Border.all(color: scheme.outlineVariant),
+        color: tokens.surface,
+        border: Border.all(color: tokens.line),
         borderRadius: BeenutTheme.radiusSharp,
       ),
       child: Row(
@@ -98,39 +103,24 @@ class StepperControl extends StatelessWidget {
           _StepperButton(
             enabled: enabled,
             icon: Icons.remove,
-            borderRadius: BeenutTheme.radiusSharp,
             onTap: onDecrement,
           ),
+          Container(width: 1, height: 20, color: tokens.lineSubtle),
           Container(
-            width: 1,
-            height: 16,
-            color: scheme.outlineVariant.withValues(alpha: 0.3),
-          ),
-          Container(
-            constraints: const BoxConstraints(minWidth: 48),
+            constraints: const BoxConstraints(minWidth: 56),
             alignment: Alignment.center,
-            padding: const EdgeInsets.symmetric(horizontal: 6),
+            padding: const EdgeInsets.symmetric(horizontal: WorkbenchSpace.x2),
             child: Text(
               value,
-              style: TextStyle(
-                fontFamily: 'monospace',
+              style: BeenutTheme.dataTextStyle(context).copyWith(
                 fontSize: 12,
-                fontWeight: FontWeight.w700,
-                color: BeenutTheme.inkColor(context),
+                fontWeight: FontWeight.w500,
+                color: enabled ? tokens.ink : tokens.disabled,
               ),
             ),
           ),
-          Container(
-            width: 1,
-            height: 16,
-            color: scheme.outlineVariant.withValues(alpha: 0.3),
-          ),
-          _StepperButton(
-            enabled: enabled,
-            icon: Icons.add,
-            borderRadius: BeenutTheme.radiusSharp,
-            onTap: onIncrement,
-          ),
+          Container(width: 1, height: 20, color: tokens.lineSubtle),
+          _StepperButton(enabled: enabled, icon: Icons.add, onTap: onIncrement),
         ],
       ),
     );
@@ -141,31 +131,111 @@ class _StepperButton extends StatelessWidget {
   const _StepperButton({
     required this.enabled,
     required this.icon,
-    required this.borderRadius,
     required this.onTap,
   });
 
   final bool enabled;
   final IconData icon;
-  final BorderRadius borderRadius;
   final VoidCallback onTap;
 
   @override
   Widget build(BuildContext context) {
+    final tokens = context.workbenchColors;
     return Material(
       color: Colors.transparent,
       child: InkWell(
         onTap: enabled ? onTap : null,
-        borderRadius: borderRadius,
         child: SizedBox(
-          width: 28,
-          height: 28,
+          width: WorkbenchMetric.technicianControlHeight,
+          height: WorkbenchMetric.technicianControlHeight,
           child: Icon(
             icon,
-            size: 13,
-            color: enabled
-                ? BeenutTheme.inkColor(context)
-                : BeenutTheme.mutedColor(context),
+            size: 14,
+            color: enabled ? tokens.ink : tokens.disabled,
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class WorkbenchSwitch extends StatefulWidget {
+  const WorkbenchSwitch({
+    super.key,
+    required this.value,
+    required this.onChanged,
+  });
+
+  final bool value;
+  final ValueChanged<bool>? onChanged;
+
+  @override
+  State<WorkbenchSwitch> createState() => _WorkbenchSwitchState();
+}
+
+class _WorkbenchSwitchState extends State<WorkbenchSwitch> {
+  bool _focused = false;
+
+  @override
+  Widget build(BuildContext context) {
+    final tokens = context.workbenchColors;
+    final enabled = widget.onChanged != null;
+    final duration = MediaQuery.disableAnimationsOf(context)
+        ? Duration.zero
+        : const Duration(milliseconds: 100);
+    final track = !enabled
+        ? tokens.lineSubtle
+        : widget.value
+        ? tokens.action
+        : tokens.line;
+    final thumb = !enabled
+        ? tokens.disabled
+        : widget.value
+        ? tokens.onAction
+        : tokens.surface;
+
+    return Semantics(
+      button: true,
+      toggled: widget.value,
+      enabled: enabled,
+      child: Material(
+        color: Colors.transparent,
+        child: InkWell(
+          onTap: enabled ? () => widget.onChanged!(!widget.value) : null,
+          onFocusChange: (focused) => setState(() => _focused = focused),
+          borderRadius: BorderRadius.circular(WorkbenchRadius.panel),
+          child: SizedBox(
+            width: 44,
+            height: WorkbenchMetric.technicianHitTarget,
+            child: Center(
+              child: AnimatedContainer(
+                duration: duration,
+                curve: Curves.easeOutCubic,
+                width: 32,
+                height: 18,
+                padding: const EdgeInsets.all(2),
+                alignment: widget.value
+                    ? Alignment.centerRight
+                    : Alignment.centerLeft,
+                decoration: BoxDecoration(
+                  color: track,
+                  borderRadius: BorderRadius.circular(9),
+                  border: Border.all(
+                    color: _focused ? tokens.actionFocus : track,
+                    width: _focused ? 2 : 1,
+                  ),
+                ),
+                child: AnimatedContainer(
+                  duration: duration,
+                  width: 12,
+                  height: 12,
+                  decoration: BoxDecoration(
+                    color: thumb,
+                    shape: BoxShape.circle,
+                  ),
+                ),
+              ),
+            ),
           ),
         ),
       ),

@@ -2,6 +2,8 @@ import 'package:flutter/material.dart';
 import '../../../core/models.dart';
 import '../../../core/i18n.dart';
 import '../../../core/theme.dart';
+import '../../../core/workbench_tokens.dart';
+import '../../common/setting_controls.dart';
 import '../../common/virtual_keyboard.dart';
 import 'file_picker.dart';
 
@@ -104,6 +106,7 @@ class _TargetEditDialogState extends State<TargetEditDialog> {
   @override
   Widget build(BuildContext context) {
     final scheme = Theme.of(context).colorScheme;
+    final tokens = context.workbenchColors;
     return Center(
       child: Material(
         color: Colors.transparent,
@@ -113,8 +116,8 @@ class _TargetEditDialogState extends State<TargetEditDialog> {
             maxHeight: MediaQuery.of(context).size.height - 64,
           ),
           decoration: BoxDecoration(
-            color: scheme.surfaceContainer,
-            borderRadius: BorderRadius.all(Radius.circular(4)),
+            color: tokens.surface,
+            borderRadius: BeenutTheme.radiusPanel,
             boxShadow: [
               BoxShadow(
                 color: Colors.black.withValues(alpha: 0.24),
@@ -122,9 +125,7 @@ class _TargetEditDialogState extends State<TargetEditDialog> {
                 offset: const Offset(0, 12),
               ),
             ],
-            border: Border.all(
-              color: scheme.outlineVariant.withValues(alpha: 0.3),
-            ),
+            border: Border.all(color: tokens.line),
           ),
           child: Column(
             mainAxisSize: MainAxisSize.min,
@@ -156,7 +157,7 @@ class _TargetEditDialogState extends State<TargetEditDialog> {
                         side: BorderSide(
                           color: scheme.outlineVariant.withValues(alpha: 0.4),
                         ),
-                        backgroundColor: scheme.surfaceContainerHigh,
+                        backgroundColor: tokens.raised,
                         shape: RoundedRectangleBorder(
                           borderRadius: BorderRadius.all(Radius.circular(4)),
                         ),
@@ -165,10 +166,7 @@ class _TargetEditDialogState extends State<TargetEditDialog> {
                   ],
                 ),
               ),
-              Divider(
-                height: 1,
-                color: scheme.outlineVariant.withValues(alpha: 0.3),
-              ),
+              Divider(height: 1, color: tokens.lineSubtle),
 
               // Form content
               Flexible(
@@ -182,7 +180,7 @@ class _TargetEditDialogState extends State<TargetEditDialog> {
                       'Name',
                       style: TextStyle(
                         fontSize: 13,
-                        fontWeight: FontWeight.w600,
+                        fontWeight: FontWeight.w500,
                         color: scheme.onSurface,
                       ),
                     ),
@@ -203,7 +201,7 @@ class _TargetEditDialogState extends State<TargetEditDialog> {
                               ),
                               hintText: I18n.t(context, 'enter_target_name'),
                               filled: true,
-                              fillColor: scheme.surfaceContainerHigh,
+                              fillColor: tokens.raised,
                               border: OutlineInputBorder(
                                 borderRadius: BorderRadius.all(
                                   Radius.circular(4),
@@ -247,7 +245,7 @@ class _TargetEditDialogState extends State<TargetEditDialog> {
                             ),
                             onPressed: () => _showFullscreenKeyboard(context),
                             style: IconButton.styleFrom(
-                              backgroundColor: scheme.surfaceContainerHigh,
+                              backgroundColor: tokens.raised,
                               shape: RoundedRectangleBorder(
                                 borderRadius: BorderRadius.all(
                                   Radius.circular(4),
@@ -269,10 +267,10 @@ class _TargetEditDialogState extends State<TargetEditDialog> {
 
                     // Icon & Image Browse
                     Text(
-                      'Icon & Custom Image',
+                      'Icon & custom image',
                       style: TextStyle(
                         fontSize: 13,
-                        fontWeight: FontWeight.w600,
+                        fontWeight: FontWeight.w500,
                         color: scheme.onSurface,
                       ),
                     ),
@@ -283,17 +281,15 @@ class _TargetEditDialogState extends State<TargetEditDialog> {
                           onPressed: () => setState(() => imagePath = ''),
                           style: OutlinedButton.styleFrom(
                             backgroundColor: imagePath.trim().isEmpty
-                                ? scheme.secondaryContainer
-                                : scheme.surfaceContainerHigh,
+                                ? tokens.actionSoft
+                                : tokens.surface,
                             foregroundColor: imagePath.trim().isEmpty
-                                ? scheme.onSecondaryContainer
-                                : scheme.onSurface,
+                                ? tokens.actionText
+                                : tokens.ink,
                             side: BorderSide(
                               color: imagePath.trim().isEmpty
-                                  ? scheme.secondary
-                                  : scheme.outlineVariant.withValues(
-                                      alpha: 0.4,
-                                    ),
+                                  ? tokens.action
+                                  : tokens.line,
                             ),
                             minimumSize: const Size(0, 36),
                             padding: const EdgeInsets.symmetric(horizontal: 14),
@@ -305,13 +301,13 @@ class _TargetEditDialogState extends State<TargetEditDialog> {
                           ),
                           icon: const Icon(Icons.hexagon_outlined, size: 16),
                           label: Text(
-                            'Default Icon',
+                            'Default icon',
                             style: TextStyle(
                               fontSize: 12,
-                              fontWeight: FontWeight.w600,
+                              fontWeight: FontWeight.w500,
                               color: imagePath.trim().isEmpty
-                                  ? scheme.onSecondaryContainer
-                                  : scheme.onSurface,
+                                  ? tokens.actionText
+                                  : tokens.ink,
                             ),
                           ),
                         ),
@@ -320,17 +316,15 @@ class _TargetEditDialogState extends State<TargetEditDialog> {
                           onPressed: _openImagePicker,
                           style: OutlinedButton.styleFrom(
                             backgroundColor: imagePath.trim().isNotEmpty
-                                ? scheme.secondaryContainer
-                                : scheme.surfaceContainerHigh,
+                                ? tokens.actionSoft
+                                : tokens.surface,
                             foregroundColor: imagePath.trim().isNotEmpty
-                                ? scheme.onSecondaryContainer
-                                : scheme.onSurface,
+                                ? tokens.actionText
+                                : tokens.ink,
                             side: BorderSide(
                               color: imagePath.trim().isNotEmpty
-                                  ? scheme.secondary
-                                  : scheme.outlineVariant.withValues(
-                                      alpha: 0.4,
-                                    ),
+                                  ? tokens.action
+                                  : tokens.line,
                             ),
                             minimumSize: const Size(0, 36),
                             padding: const EdgeInsets.symmetric(horizontal: 14),
@@ -342,13 +336,13 @@ class _TargetEditDialogState extends State<TargetEditDialog> {
                           ),
                           icon: const Icon(Icons.image_outlined, size: 16),
                           label: Text(
-                            'Custom Image',
+                            'Custom image',
                             style: TextStyle(
                               fontSize: 12,
-                              fontWeight: FontWeight.w600,
+                              fontWeight: FontWeight.w500,
                               color: imagePath.trim().isNotEmpty
-                                  ? scheme.onSecondaryContainer
-                                  : scheme.onSurface,
+                                  ? tokens.actionText
+                                  : tokens.ink,
                             ),
                           ),
                         ),
@@ -392,7 +386,7 @@ class _TargetEditDialogState extends State<TargetEditDialog> {
                               fontFamilyFallback:
                                   BeenutTheme.fontFamilyFallback,
                               fontSize: 11,
-                              fontWeight: FontWeight.w600,
+                              fontWeight: FontWeight.w500,
                             ),
                           ),
                         ),
@@ -402,10 +396,10 @@ class _TargetEditDialogState extends State<TargetEditDialog> {
 
                     // Map keywords
                     Text(
-                      'Model Classes to Map',
+                      'Model classes to map',
                       style: TextStyle(
                         fontSize: 13,
-                        fontWeight: FontWeight.w600,
+                        fontWeight: FontWeight.w500,
                         color: scheme.onSurface,
                       ),
                     ),
@@ -431,6 +425,14 @@ class _TargetEditDialogState extends State<TargetEditDialog> {
                               ),
                               selected: keywords.contains(label),
                               onSelected: (_) => _toggleKeyword(label),
+                              showCheckmark: false,
+                              selectedColor: tokens.actionSoft,
+                              backgroundColor: tokens.raised,
+                              side: BorderSide(
+                                color: keywords.contains(label)
+                                    ? tokens.action
+                                    : tokens.line,
+                              ),
                               shape: RoundedRectangleBorder(
                                 borderRadius: BorderRadius.all(
                                   Radius.circular(4),
@@ -453,11 +455,11 @@ class _TargetEditDialogState extends State<TargetEditDialog> {
                           'Enabled',
                           style: TextStyle(
                             fontSize: 13,
-                            fontWeight: FontWeight.w600,
+                            fontWeight: FontWeight.w500,
                             color: scheme.onSurface,
                           ),
                         ),
-                        Switch(
+                        WorkbenchSwitch(
                           value: enabled,
                           onChanged: (val) => setState(() => enabled = val),
                         ),
@@ -466,10 +468,7 @@ class _TargetEditDialogState extends State<TargetEditDialog> {
                   ],
                 ),
               ),
-              Divider(
-                height: 1,
-                color: scheme.outlineVariant.withValues(alpha: 0.3),
-              ),
+              Divider(height: 1, color: tokens.lineSubtle),
 
               // Footer actions
               Padding(
@@ -489,7 +488,7 @@ class _TargetEditDialogState extends State<TargetEditDialog> {
                           textStyle: const TextStyle(
                             fontFamily: BeenutTheme.fontFamily,
                             fontFamilyFallback: BeenutTheme.fontFamilyFallback,
-                            fontWeight: FontWeight.w600,
+                            fontWeight: FontWeight.w500,
                             fontSize: 12,
                           ),
                         ),
@@ -508,7 +507,7 @@ class _TargetEditDialogState extends State<TargetEditDialog> {
                       child: Text(
                         I18n.t(context, 'cancel'),
                         style: const TextStyle(
-                          fontWeight: FontWeight.w600,
+                          fontWeight: FontWeight.w500,
                           fontSize: 12,
                         ),
                       ),
@@ -526,7 +525,7 @@ class _TargetEditDialogState extends State<TargetEditDialog> {
                       child: Text(
                         I18n.t(context, 'save_btn'),
                         style: const TextStyle(
-                          fontWeight: FontWeight.w600,
+                          fontWeight: FontWeight.w500,
                           fontSize: 12,
                         ),
                       ),

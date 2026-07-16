@@ -1,8 +1,11 @@
 import 'dart:io';
+
 import 'package:flutter/material.dart';
-import '../../core/models.dart';
+
 import '../../core/i18n.dart';
+import '../../core/models.dart';
 import '../../core/theme.dart';
+import '../../core/workbench_tokens.dart';
 
 class PartSelector extends StatefulWidget {
   const PartSelector({
@@ -27,7 +30,7 @@ class _PartSelectorState extends State<PartSelector> {
 
   @override
   Widget build(BuildContext context) {
-    final scheme = Theme.of(context).colorScheme;
+    final tokens = context.workbenchColors;
     final selectedPart = widget.parts.firstWhere(
       (part) => part.id == widget.selectedId,
       orElse: () => widget.parts.isNotEmpty
@@ -48,18 +51,13 @@ class _PartSelectorState extends State<PartSelector> {
           onOpen: () => widget.onMenuStateChanged?.call(true),
           onClose: () => widget.onMenuStateChanged?.call(false),
           style: MenuStyle(
-            backgroundColor: WidgetStatePropertyAll(
-              scheme.surfaceContainerHigh,
-            ),
-            surfaceTintColor: WidgetStatePropertyAll(Colors.transparent),
-            elevation: const WidgetStatePropertyAll(2),
-            shadowColor: WidgetStatePropertyAll(
-              Colors.black.withValues(alpha: 0.10),
-            ),
+            backgroundColor: WidgetStatePropertyAll(tokens.raised),
+            surfaceTintColor: const WidgetStatePropertyAll(Colors.transparent),
+            elevation: const WidgetStatePropertyAll(3),
             shape: WidgetStatePropertyAll(
               RoundedRectangleBorder(
                 borderRadius: BeenutTheme.radiusPanel,
-                side: BorderSide(color: BeenutTheme.outlineVariant(context)),
+                side: BorderSide(color: tokens.line),
               ),
             ),
             minimumSize: WidgetStatePropertyAll(Size(constraints.maxWidth, 0)),
@@ -67,7 +65,7 @@ class _PartSelectorState extends State<PartSelector> {
               Size(constraints.maxWidth, double.infinity),
             ),
             padding: const WidgetStatePropertyAll(
-              EdgeInsets.symmetric(vertical: 4),
+              EdgeInsets.symmetric(vertical: WorkbenchSpace.x1),
             ),
           ),
           menuChildren: [
@@ -79,141 +77,142 @@ class _PartSelectorState extends State<PartSelector> {
                 },
                 style: ButtonStyle(
                   minimumSize: WidgetStatePropertyAll(
-                    Size(constraints.maxWidth, 48),
+                    Size(constraints.maxWidth, 52),
                   ),
                   padding: const WidgetStatePropertyAll(
-                    EdgeInsets.symmetric(horizontal: 12),
+                    EdgeInsets.symmetric(horizontal: WorkbenchSpace.x3),
                   ),
                   alignment: Alignment.centerLeft,
                   shape: const WidgetStatePropertyAll(
                     RoundedRectangleBorder(
-                      borderRadius: BorderRadius.all(Radius.circular(4)),
+                      borderRadius: BeenutTheme.radiusSharp,
                     ),
                   ),
                 ),
-                leadingIcon: Container(
-                  width: 32,
-                  height: 32,
-                  padding: const EdgeInsets.all(2),
-                  decoration: BoxDecoration(
-                    color: scheme.surfaceContainerHighest,
-                    border: Border.all(
-                      color: BeenutTheme.outlineVariant(context),
-                    ),
-                    borderRadius: BeenutTheme.radiusSharp,
-                  ),
-                  child: part.image.isEmpty
-                      ? Icon(
-                          Icons.hexagon_outlined,
-                          size: 14,
-                          color: scheme.onSurfaceVariant,
-                        )
-                      : Image.file(
-                          File(part.image),
-                          errorBuilder: (_, _, _) => Icon(
-                            Icons.hexagon_outlined,
-                            size: 14,
-                            color: scheme.onSurfaceVariant,
-                          ),
-                        ),
-                ),
+                leadingIcon: _PartImage(part: part, size: 34),
                 child: Text(
                   part.name,
-                  style: TextStyle(
-                    fontSize: 12,
-                    fontWeight: FontWeight.w600,
-                    color: scheme.onSurface,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                    color: tokens.ink,
+                    fontWeight: FontWeight.w500,
                   ),
                 ),
               ),
           ],
-          // M3 trigger: uses InkWell + Card-like surface for the selector trigger
           child: Tooltip(
             message: I18n.t(context, 'select_target'),
-            child: InkWell(
-              onTap: () {
-                if (_menuController.isOpen) {
-                  _menuController.close();
-                } else {
-                  _menuController.open();
-                }
-              },
-              borderRadius: BeenutTheme.radiusPanel,
-              child: Container(
-                padding: const EdgeInsets.symmetric(
-                  horizontal: 16,
-                  vertical: 12,
-                ),
-                decoration: BoxDecoration(
-                  color: scheme.surfaceContainer,
-                  border: Border.all(
-                    color: BeenutTheme.outlineVariant(context),
-                  ),
+            child: Semantics(
+              button: true,
+              label:
+                  '${I18n.t(context, 'selected_target_label')}: ${selectedPart.name}',
+              child: Material(
+                color: tokens.surface,
+                shape: RoundedRectangleBorder(
                   borderRadius: BeenutTheme.radiusPanel,
+                  side: BorderSide(color: tokens.line),
                 ),
-                child: Row(
-                  children: [
-                    // Selected item image box
-                    Container(
-                      width: 36,
-                      height: 36,
-                      padding: const EdgeInsets.all(3),
-                      decoration: BoxDecoration(
-                        color: scheme.secondaryContainer,
-                        borderRadius: BeenutTheme.radiusSharp,
+                clipBehavior: Clip.antiAlias,
+                child: InkWell(
+                  onTap: widget.parts.isEmpty
+                      ? null
+                      : () {
+                          if (_menuController.isOpen) {
+                            _menuController.close();
+                          } else {
+                            _menuController.open();
+                          }
+                        },
+                  child: ConstrainedBox(
+                    constraints: const BoxConstraints(minHeight: 60),
+                    child: Padding(
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: WorkbenchSpace.x3,
+                        vertical: WorkbenchSpace.x2,
                       ),
-                      child: selectedPart.image.isEmpty
-                          ? Icon(
-                              Icons.hexagon_outlined,
-                              size: 20,
-                              color: BeenutTheme.mutedColor(context),
-                            )
-                          : selectedPart.image.startsWith('assets/')
-                          ? Image.asset(
-                              selectedPart.image,
-                              fit: BoxFit.contain,
-                              errorBuilder: (_, _, _) => Icon(
-                                Icons.hexagon_outlined,
-                                size: 20,
-                                color: BeenutTheme.mutedColor(context),
-                              ),
-                            )
-                          : Image.file(
-                              File(selectedPart.image),
-                              fit: BoxFit.contain,
-                              errorBuilder: (_, _, _) => Icon(
-                                Icons.hexagon_outlined,
-                                size: 20,
-                                color: BeenutTheme.mutedColor(context),
-                              ),
+                      child: Row(
+                        children: [
+                          _PartImage(part: selectedPart, size: 40),
+                          const SizedBox(width: WorkbenchSpace.x3),
+                          Expanded(
+                            child: Column(
+                              mainAxisSize: MainAxisSize.min,
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Text(
+                                  I18n.t(context, 'selected_target_label'),
+                                  maxLines: 1,
+                                  overflow: TextOverflow.ellipsis,
+                                  style: Theme.of(context).textTheme.bodySmall,
+                                ),
+                                const SizedBox(height: WorkbenchSpace.x1),
+                                Text(
+                                  selectedPart.name,
+                                  maxLines: 1,
+                                  overflow: TextOverflow.ellipsis,
+                                  style: Theme.of(context).textTheme.titleMedium
+                                      ?.copyWith(color: tokens.ink),
+                                ),
+                              ],
                             ),
-                    ),
-                    const SizedBox(width: 10),
-                    // Selected item label
-                    Expanded(
-                      child: Text(
-                        selectedPart.name,
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
-                        style: TextStyle(
-                          fontSize: 15.5,
-                          fontWeight: FontWeight.w600,
-                          color: BeenutTheme.inkColor(context),
-                        ),
+                          ),
+                          const SizedBox(width: WorkbenchSpace.x2),
+                          Icon(
+                            Icons.keyboard_arrow_down,
+                            size: 20,
+                            color: widget.parts.isEmpty
+                                ? tokens.disabled
+                                : tokens.muted,
+                          ),
+                        ],
                       ),
                     ),
-                    Icon(
-                      Icons.keyboard_arrow_down,
-                      size: 18,
-                      color: BeenutTheme.mutedColor(context),
-                    ),
-                  ],
+                  ),
                 ),
               ),
             ),
           ),
         );
       },
+    );
+  }
+}
+
+class _PartImage extends StatelessWidget {
+  const _PartImage({required this.part, required this.size});
+
+  final PartType part;
+  final double size;
+
+  @override
+  Widget build(BuildContext context) {
+    final tokens = context.workbenchColors;
+    Widget fallback() =>
+        Icon(Icons.hexagon_outlined, size: size * 0.5, color: tokens.muted);
+
+    return Container(
+      width: size,
+      height: size,
+      padding: const EdgeInsets.all(3),
+      decoration: BoxDecoration(
+        color: tokens.raised,
+        borderRadius: BeenutTheme.radiusSharp,
+        border: Border.all(color: tokens.lineSubtle),
+      ),
+      child: part.image.isEmpty
+          ? fallback()
+          : part.image.startsWith('assets/')
+          ? Image.asset(
+              part.image,
+              fit: BoxFit.contain,
+              errorBuilder: (_, _, _) => fallback(),
+            )
+          : Image.file(
+              File(part.image),
+              fit: BoxFit.contain,
+              errorBuilder: (_, _, _) => fallback(),
+            ),
     );
   }
 }

@@ -3,6 +3,8 @@ import '../../../core/models.dart';
 import '../../../core/i18n.dart';
 import '../../common/widgets.dart';
 
+enum ConfigEditorSection { camera, counting, hardware }
+
 class ConfigEditor extends StatefulWidget {
   const ConfigEditor({
     super.key,
@@ -10,12 +12,14 @@ class ConfigEditor extends StatefulWidget {
     required this.capabilities,
     required this.enabled,
     required this.onSave,
+    this.section = ConfigEditorSection.camera,
   });
 
   final MachineConfig config;
   final HardwareCapabilities capabilities;
   final bool enabled;
   final ValueChanged<MachineConfig> onSave;
+  final ConfigEditorSection section;
 
   @override
   State<ConfigEditor> createState() => _ConfigEditorState();
@@ -215,186 +219,191 @@ class _ConfigEditorState extends State<ConfigEditor> {
     final triggerModeOptions = hardwareTriggerAvailable
         ? [I18n.t(context, 'tray_triggered'), I18n.t(context, 'live_stream')]
         : [I18n.t(context, 'live_stream')];
+    Widget hardwareInfoRow() => IconInfoRow(
+      icon: hardwareTriggerAvailable
+          ? Icons.memory_outlined
+          : Icons.desktop_windows_outlined,
+      iconColor: hardwareTriggerAvailable
+          ? scheme.tertiary
+          : scheme.onSurfaceVariant,
+      label: I18n.t(context, 'hardware_io'),
+      description: hardwareTriggerAvailable
+          ? I18n.t(context, 'gpio_detected')
+          : (gpioSupported ? gpioDetail : I18n.t(context, 'gpio_mock_mode')),
+      value: hardwareTriggerAvailable ? gpioBackend : platformClass,
+      tone: hardwareTriggerAvailable ? RowTone.success : RowTone.neutral,
+    );
 
     return Column(
       children: [
-        SettingsGroup(
-          title: I18n.t(context, 'camera_basics'),
-          icon: Icons.camera_alt_outlined,
-          children: [
-            SelectSettingRow(
-              label: I18n.t(context, 'camera_source'),
-              description: I18n.t(context, 'camera_source_desc'),
-              value: activeCameraOption,
-              options: cameraOptionsMap.keys.toList(),
-              enabled: widget.enabled,
-              onSelected: (value) {
-                final selected = cameraOptionsMap[value];
-                if (selected != null) {
-                  Map<String, dynamic>? matchedCamera;
-                  for (final item in widget.capabilities.cameras) {
-                    if (item['source'] == selected.source &&
-                        item['device'] == selected.device) {
-                      matchedCamera = item;
+        if (widget.section == ConfigEditorSection.camera)
+          SettingsGroup(
+            title: I18n.t(context, 'camera_basics'),
+            icon: Icons.camera_alt_outlined,
+            children: [
+              SelectSettingRow(
+                label: I18n.t(context, 'camera_source'),
+                description: '',
+                value: activeCameraOption,
+                options: cameraOptionsMap.keys.toList(),
+                enabled: widget.enabled,
+                onSelected: (value) {
+                  final selected = cameraOptionsMap[value];
+                  if (selected != null) {
+                    Map<String, dynamic>? matchedCamera;
+                    for (final item in widget.capabilities.cameras) {
+                      if (item['source'] == selected.source &&
+                          item['device'] == selected.device) {
+                        matchedCamera = item;
+                        break;
+                      }
+                    }
+
+                    int? defaultWidth;
+                    int? defaultHeight;
+                    if (matchedCamera != null) {
+                      final formats = matchedCamera['formats'] as List?;
+                      if (formats != null && formats.isNotEmpty) {
+                        final firstFormat = formats.first;
+                        if (firstFormat is Map<String, dynamic>) {
+                          defaultWidth = firstFormat['width'] as int?;
+                          defaultHeight = firstFormat['height'] as int?;
+                        }
+                      }
+                    }
+
+                    _updateCamera(
+                      camera.copyWith(
+                        source: selected.source,
+                        device: selected.device,
+                        width: defaultWidth ?? camera.width,
+                        height: defaultHeight ?? camera.height,
+                      ),
+                    );
+                  }
+                },
+              ),
+              SelectSettingRow(
+                label: I18n.t(context, 'resolution'),
+                description: '',
+                value:
+                    resolutionOptions.any(
+                      (item) => item.width == width && item.height == height,
+                    )
+                    ? resolutionLabel
+                    : 'Custom ($width x $height)',
+                options: [
+                  if (!resolutionOptions.any(
+                    (item) => item.width == width && item.height == height,
+                  ))
+                    'Custom ($width x $height)',
+                  for (final item in resolutionOptions) item.label,
+                ],
+                enabled: widget.enabled,
+                onSelected: (value) {
+                  for (final option in resolutionOptions) {
+                    if (option.label == value) {
+                      _updateCamera(
+                        camera.copyWith(
+                          width: option.width,
+                          height: option.height,
+                        ),
+                      );
                       break;
                     }
                   }
-
-                  int? defaultWidth;
-                  int? defaultHeight;
-                  if (matchedCamera != null) {
-                    final formats = matchedCamera['formats'] as List?;
-                    if (formats != null && formats.isNotEmpty) {
-                      final firstFormat = formats.first;
-                      if (firstFormat is Map<String, dynamic>) {
-                        defaultWidth = firstFormat['width'] as int?;
-                        defaultHeight = firstFormat['height'] as int?;
-                      }
-                    }
-                  }
-
-                  _updateCamera(
-                    camera.copyWith(
-                      source: selected.source,
-                      device: selected.device,
-                      width: defaultWidth ?? camera.width,
-                      height: defaultHeight ?? camera.height,
-                    ),
-                  );
-                }
-              },
-            ),
-            SelectSettingRow(
-              label: I18n.t(context, 'resolution'),
-              description: I18n.t(context, 'resolution_desc'),
-              value:
-                  resolutionOptions.any(
-                    (item) => item.width == width && item.height == height,
-                  )
-                  ? resolutionLabel
-                  : 'Custom ($width x $height)',
-              options: [
-                if (!resolutionOptions.any(
-                  (item) => item.width == width && item.height == height,
-                ))
-                  'Custom ($width x $height)',
-                for (final item in resolutionOptions) item.label,
-              ],
-              enabled: widget.enabled,
-              onSelected: (value) {
-                for (final option in resolutionOptions) {
-                  if (option.label == value) {
-                    _updateCamera(
-                      camera.copyWith(
-                        width: option.width,
-                        height: option.height,
-                      ),
-                    );
-                    break;
-                  }
-                }
-              },
-            ),
-            SwitchSettingRow(
-              label: I18n.t(context, 'flip_horizontal'),
-              description: I18n.t(context, 'flip_horizontal_desc'),
-              value: camera.flipHorizontal,
-              enabled: widget.enabled,
-              onChanged: (value) =>
-                  _updateCamera(camera.copyWith(flipHorizontal: value)),
-            ),
-            SwitchSettingRow(
-              label: I18n.t(context, 'flip_vertical'),
-              description: I18n.t(context, 'flip_vertical_desc'),
-              value: camera.flipVertical,
-              enabled: widget.enabled,
-              onChanged: (value) =>
-                  _updateCamera(camera.copyWith(flipVertical: value)),
-            ),
-          ],
-        ),
-        SettingsGroup(
-          title: I18n.t(context, 'camera_pipeline'),
-          description: I18n.t(context, 'camera_pipeline_desc'),
-          icon: Icons.settings_input_component_outlined,
-          collapsible: true,
-          initiallyExpanded: false,
-          children: [
-            SelectSettingRow(
-              label: I18n.t(context, 'preview_transport'),
-              description: I18n.t(context, 'preview_transport_desc'),
-              value: _previewTransportLabel(previewTransport),
-              options: _previewTransportOptions(previewTransport),
-              enabled: widget.enabled,
-              onSelected: (value) => _updateCamera(
-                camera.copyWith(previewTransport: _previewTransportId(value)),
+                },
               ),
-            ),
-            StepperSettingRow(
-              label: I18n.t(context, 'warmup_frames'),
-              description: I18n.t(context, 'warmup_frames_desc'),
-              value: camera.warmupFrames,
-              min: 0,
-              max: 30,
-              enabled: widget.enabled,
-              onChanged: (value) =>
-                  _updateCamera(camera.copyWith(warmupFrames: value)),
-            ),
-          ],
-        ),
-        SettingsGroup(
-          title: I18n.t(context, 'count_trigger'),
-          icon: Icons.play_circle_outline,
-          children: [
-            IconInfoRow(
-              icon: hardwareTriggerAvailable
-                  ? Icons.memory_outlined
-                  : Icons.desktop_windows_outlined,
-              iconColor: hardwareTriggerAvailable
-                  ? scheme.tertiary
-                  : scheme.onSurfaceVariant,
-              label: I18n.t(context, 'hardware_io'),
-              description: hardwareTriggerAvailable
-                  ? I18n.t(context, 'gpio_detected')
-                  : (gpioSupported
-                        ? gpioDetail
-                        : I18n.t(context, 'gpio_mock_mode')),
-              value: hardwareTriggerAvailable ? gpioBackend : platformClass,
-              tone: hardwareTriggerAvailable
-                  ? RowTone.success
-                  : RowTone.neutral,
-            ),
-            SelectSettingRow(
-              label: I18n.t(context, 'trigger_mode'),
-              description: hardwareTriggerAvailable
-                  ? I18n.t(context, 'trigger_mode_desc')
-                  : I18n.t(context, 'no_gpio_live_only'),
-              value: triggerModeLabel,
-              options: triggerModeOptions,
-              enabled: widget.enabled,
-              onSelected: (value) {
-                final mode =
-                    (value == I18n.t(context, 'live_stream') ||
-                        value == 'เรียลไทม์สด')
-                    ? 'real_time'
-                    : 'tray_sensor';
-                _updateCounting(counting.copyWith(triggerMode: mode));
-              },
-            ),
-          ],
-        ),
-        if (hardwareTriggerAvailable)
+              SwitchSettingRow(
+                label: I18n.t(context, 'flip_horizontal'),
+                description: '',
+                value: camera.flipHorizontal,
+                enabled: widget.enabled,
+                onChanged: (value) =>
+                    _updateCamera(camera.copyWith(flipHorizontal: value)),
+              ),
+              SwitchSettingRow(
+                label: I18n.t(context, 'flip_vertical'),
+                description: '',
+                value: camera.flipVertical,
+                enabled: widget.enabled,
+                onChanged: (value) =>
+                    _updateCamera(camera.copyWith(flipVertical: value)),
+              ),
+            ],
+          ),
+        if (widget.section == ConfigEditorSection.camera)
           SettingsGroup(
-            title: I18n.t(context, 'gpio_mapping'),
-            description: I18n.t(context, 'gpio_mapping_desc'),
-            icon: Icons.developer_board_outlined,
+            title: I18n.t(context, 'camera_pipeline'),
+            description: I18n.t(context, 'camera_pipeline_desc'),
+            icon: Icons.settings_input_component_outlined,
             collapsible: true,
             initiallyExpanded: false,
             children: [
-              if (triggerMode == 'tray_sensor') ...[
+              SelectSettingRow(
+                label: I18n.t(context, 'preview_transport'),
+                description: '',
+                value: _previewTransportLabel(previewTransport),
+                options: _previewTransportOptions(previewTransport),
+                enabled: widget.enabled,
+                onSelected: (value) => _updateCamera(
+                  camera.copyWith(previewTransport: _previewTransportId(value)),
+                ),
+              ),
+              StepperSettingRow(
+                label: I18n.t(context, 'warmup_frames'),
+                description: '',
+                value: camera.warmupFrames,
+                min: 0,
+                max: 30,
+                enabled: widget.enabled,
+                onChanged: (value) =>
+                    _updateCamera(camera.copyWith(warmupFrames: value)),
+              ),
+            ],
+          ),
+        if (widget.section == ConfigEditorSection.counting)
+          SettingsGroup(
+            title: I18n.t(context, 'count_trigger'),
+            icon: Icons.play_circle_outline,
+            children: [
+              hardwareInfoRow(),
+              SelectSettingRow(
+                label: I18n.t(context, 'trigger_mode'),
+                description: hardwareTriggerAvailable
+                    ? ''
+                    : I18n.t(context, 'no_gpio_live_only'),
+                value: triggerModeLabel,
+                options: triggerModeOptions,
+                enabled: widget.enabled,
+                onSelected: (value) {
+                  final mode =
+                      (value == I18n.t(context, 'live_stream') ||
+                          value == 'เรียลไทม์สด')
+                      ? 'real_time'
+                      : 'tray_sensor';
+                  _updateCounting(counting.copyWith(triggerMode: mode));
+                },
+              ),
+            ],
+          ),
+        if (widget.section == ConfigEditorSection.hardware)
+          SettingsGroup(
+            title: hardwareTriggerAvailable
+                ? I18n.t(context, 'gpio_mapping')
+                : I18n.t(context, 'hardware_io'),
+            description: hardwareTriggerAvailable
+                ? I18n.t(context, 'gpio_mapping_desc')
+                : I18n.t(context, 'gpio_mock_mode'),
+            icon: Icons.developer_board_outlined,
+            collapsible: hardwareTriggerAvailable,
+            initiallyExpanded: true,
+            children: [
+              hardwareInfoRow(),
+              if (hardwareTriggerAvailable && triggerMode == 'tray_sensor') ...[
                 SelectSettingRow(
                   label: I18n.t(context, 'tray_sensor_pin'),
-                  description: I18n.t(context, 'tray_sensor_pin_desc'),
+                  description: '',
                   value: 'GPIO $trayPin',
                   options: [
                     if (!gpioPins.contains(trayPin)) 'GPIO $trayPin',
@@ -409,7 +418,7 @@ class _ConfigEditorState extends State<ConfigEditor> {
                 ),
                 StepperSettingRow(
                   label: I18n.t(context, 'debounce_time'),
-                  description: I18n.t(context, 'debounce_time_desc'),
+                  description: '',
                   value: gpio.debounceMs,
                   unit: 'ms',
                   min: 0,
@@ -420,27 +429,29 @@ class _ConfigEditorState extends State<ConfigEditor> {
                       _updateGpio(gpio.copyWith(debounceMs: value)),
                 ),
               ],
-              SelectSettingRow(
-                label: I18n.t(context, 'led_relay_pin'),
-                description: I18n.t(context, 'led_relay_pin_desc'),
-                value: 'GPIO $relayPin',
-                options: [
-                  if (!gpioPins.contains(relayPin)) 'GPIO $relayPin',
-                  for (final pin in gpioPins) 'GPIO $pin',
-                ],
-                enabled: widget.enabled,
-                onSelected: (value) => _updateGpio(
-                  gpio.copyWith(relayPin: int.parse(value.split(' ').last)),
+              if (hardwareTriggerAvailable) ...[
+                SelectSettingRow(
+                  label: I18n.t(context, 'led_relay_pin'),
+                  description: '',
+                  value: 'GPIO $relayPin',
+                  options: [
+                    if (!gpioPins.contains(relayPin)) 'GPIO $relayPin',
+                    for (final pin in gpioPins) 'GPIO $pin',
+                  ],
+                  enabled: widget.enabled,
+                  onSelected: (value) => _updateGpio(
+                    gpio.copyWith(relayPin: int.parse(value.split(' ').last)),
+                  ),
                 ),
-              ),
-              SwitchSettingRow(
-                label: I18n.t(context, 'active_low_relay'),
-                description: I18n.t(context, 'active_low_relay_desc'),
-                value: gpio.activeLow,
-                enabled: widget.enabled,
-                onChanged: (value) =>
-                    _updateGpio(gpio.copyWith(activeLow: value)),
-              ),
+                SwitchSettingRow(
+                  label: I18n.t(context, 'active_low_relay'),
+                  description: '',
+                  value: gpio.activeLow,
+                  enabled: widget.enabled,
+                  onChanged: (value) =>
+                      _updateGpio(gpio.copyWith(activeLow: value)),
+                ),
+              ],
             ],
           ),
       ],
