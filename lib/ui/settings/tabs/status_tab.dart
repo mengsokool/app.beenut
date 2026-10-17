@@ -6,7 +6,7 @@ import '../../../core/workbench_tokens.dart';
 import '../../common/widgets.dart';
 import '../widgets/resource_chart.dart';
 
-enum StatusSettingsSection { overview, interface, service }
+enum StatusSettingsSection { overview, interface, service, cameraPermission }
 
 class StatusSettingsTab extends StatelessWidget {
   const StatusSettingsTab({
@@ -48,7 +48,13 @@ class StatusSettingsTab extends StatelessWidget {
     final cameraTone = cameraPermission.blocksCamera
         ? RowTone.danger
         : _runtimeTone(state.camera);
-    final modelTone = _runtimeTone(state.model);
+    final isModelUnconfigured =
+        ((model.engine == 'onnx' || model.engine == 'ncnn') &&
+            model.modelPath.trim().isEmpty) ||
+        (model.engine == 'hailo' && model.hefPath.trim().isEmpty);
+    final modelTone = isModelUnconfigured
+        ? RowTone.warning
+        : _runtimeTone(state.model);
     final validationTone = validation.ok
         ? (validation.warnings.isEmpty ? RowTone.success : RowTone.warning)
         : RowTone.danger;
@@ -261,9 +267,52 @@ class StatusSettingsTab extends StatelessWidget {
               ),
             ],
           ),
+        if (section == StatusSettingsSection.cameraPermission)
+          SettingsGroup(
+            title: I18n.t(context, 'camera_status'),
+            children: [
+              if (cameraPermission.blocksCamera)
+                ActionSettingRow(
+                  icon: Icons.privacy_tip_outlined,
+                  iconColor: scheme.error,
+                  label: 'macOS Camera Privacy',
+                  description: cameraPermission == CameraPermissionStatus.denied
+                      ? 'Enable BeeNut in Privacy & Security > Camera, then check again.'
+                      : cameraPermission.message,
+                  actions: [
+                    RowAction(
+                      label: 'Open settings',
+                      primary: true,
+                      onPressed: SystemPermissions.openCameraPrivacySettings,
+                    ),
+                    RowAction(
+                      label: 'Check again',
+                      onPressed: onRefreshCameraPermission,
+                    ),
+                  ],
+                ),
+              if (cameraPermission == CameraPermissionStatus.notDetermined ||
+                  cameraPermission == CameraPermissionStatus.unknown)
+                ActionSettingRow(
+                  icon: Icons.video_camera_front_outlined,
+                  iconColor: scheme.primary,
+                  label: 'Camera permission',
+                  description:
+                      'Request camera access before starting the live preview.',
+                  actions: [
+                    RowAction(
+                      label: 'Request',
+                      primary: true,
+                      onPressed: onRefreshCameraPermission,
+                    ),
+                  ],
+                ),
+            ],
+          ),
         if (section == StatusSettingsSection.interface)
           SettingsGroup(
             title: I18n.t(context, 'display_settings'),
+            showHeader: false,
             icon: Icons.display_settings_outlined,
             children: [
               StepperSettingRow(
@@ -507,6 +556,9 @@ String _cameraSourceDisplayName(
   }
   if (source == 'avfoundation') {
     return I18n.t(context, 'camera_source_macos');
+  }
+  if (source == 'android') {
+    return I18n.t(context, 'camera_source_android');
   }
   if (source == 'mock') {
     return I18n.t(context, 'camera_source_test_pattern');

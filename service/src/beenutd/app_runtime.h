@@ -22,6 +22,7 @@ class ControlServer;
 class GpioController;
 class CountingTracker;
 class GStreamerCamera;
+class IInferenceEngine;
 class OnnxYoloEngine;
 
 struct ThermalPolicy {
@@ -106,7 +107,7 @@ private:
     std::unique_ptr<GpioController> gpio_;
     std::unique_ptr<CountingTracker> counting_;
     std::unique_ptr<GStreamerCamera> camera_;
-    std::unique_ptr<OnnxYoloEngine> engine_;
+    std::unique_ptr<IInferenceEngine> engine_;
     QThread workerThread_;
 
     bool countTestActive_ = false;

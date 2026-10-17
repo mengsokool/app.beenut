@@ -106,6 +106,9 @@ AppConfig parseConfig(const QJsonObject& root, AppConfig config)
     const auto model = migratedRoot.value("model").toObject();
     config.model.engine = str(model, "engine", config.model.engine);
     config.model.modelPath = str(model, "model_path", config.model.modelPath);
+    config.model.ncnnBinPath = str(model, "ncnn_bin_path", config.model.ncnnBinPath);
+    config.model.ncnnDevice = str(model, "ncnn_device", config.model.ncnnDevice);
+    config.model.ncnnThreads = integer(model, "ncnn_threads", config.model.ncnnThreads);
     config.model.labelsMode = str(model, "labels_mode", config.model.labelsMode);
     if (config.model.labelsMode != "custom") {
         config.model.labelsMode = "auto";
@@ -139,6 +142,7 @@ AppConfig parseConfig(const QJsonObject& root, AppConfig config)
                 .image = str(object, "image"),
                 .keywords = keywords,
                 .enabled = boolean(object, "enabled", true),
+                .classNames = object.value("class_names").toObject(),
             });
         }
         config.counting.partTypes = partTypes;
@@ -205,6 +209,7 @@ QJsonObject toJson(const AppConfig& config)
             {"image", part.image},
             {"keywords", keywords},
             {"enabled", part.enabled},
+            {"class_names", part.classNames},
         });
     }
 
@@ -237,6 +242,9 @@ QJsonObject toJson(const AppConfig& config)
         {"model", QJsonObject{
             {"engine", config.model.engine},
             {"model_path", config.model.modelPath},
+            {"ncnn_bin_path", config.model.ncnnBinPath},
+            {"ncnn_device", config.model.ncnnDevice},
+            {"ncnn_threads", config.model.ncnnThreads},
             {"labels_mode", config.model.labelsMode},
             {"labels_path", config.model.labelsPath},
             {"input_size", config.model.inputSize},

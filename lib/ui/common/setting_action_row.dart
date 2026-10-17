@@ -69,7 +69,7 @@ class ActionSettingRow extends StatelessWidget {
       fontWeight: FontWeight.w500,
     ),
     shape: RoundedRectangleBorder(
-      borderRadius: BorderRadius.all(Radius.circular(4)),
+      borderRadius: BorderRadius.zero,
     ),
   );
 
@@ -83,7 +83,7 @@ class ActionSettingRow extends StatelessWidget {
       fontWeight: FontWeight.w500,
     ),
     shape: RoundedRectangleBorder(
-      borderRadius: BorderRadius.all(Radius.circular(4)),
+      borderRadius: BorderRadius.zero,
     ),
   );
 }

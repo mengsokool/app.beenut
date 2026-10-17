@@ -1,8 +1,9 @@
 import 'package:flutter/material.dart';
-
+import '../../core/models.dart';
 import '../../core/theme.dart';
-import '../../core/workbench_tokens.dart';
+import '../components/count_dashboard_panel.dart';
 
+/// Refactored CountPanel delegating to CountDashboardPanel component.
 class CountPanel extends StatelessWidget {
   const CountPanel({
     super.key,
@@ -10,6 +11,9 @@ class CountPanel extends StatelessWidget {
     required this.color,
     required this.title,
     required this.subtitle,
+    required this.detections,
+    required this.parts,
+    required this.selectedPartTypeId,
     this.isLoading = false,
     this.isMuted = false,
   });
@@ -18,142 +22,59 @@ class CountPanel extends StatelessWidget {
   final Color color;
   final String title;
   final String subtitle;
+  final List<Detection> detections;
+  final List<PartType> parts;
+  final String selectedPartTypeId;
   final bool isLoading;
   final bool isMuted;
 
   @override
   Widget build(BuildContext context) {
-    final tokens = context.workbenchColors;
-    final disableAnimations = MediaQuery.disableAnimationsOf(context);
-
-    return LayoutBuilder(
-      builder: (context, constraints) {
-        final dense = constraints.maxHeight < 180;
-        final countSize = (constraints.maxHeight * (dense ? 0.50 : 0.56)).clamp(
-          52.0,
-          128.0,
-        );
-        final countStyle = Theme.of(context).textTheme.displayLarge?.copyWith(
-          fontFamily: BeenutTheme.fontFamily,
-          fontFamilyFallback: BeenutTheme.fontFamilyFallback,
-          fontSize: countSize,
-          height: 1,
-          fontWeight: FontWeight.w700,
-          letterSpacing: -1.5,
-          color: isMuted ? tokens.disabled : tokens.ink,
-        );
-
-        return Material(
-          color: tokens.surface,
-          shape: RoundedRectangleBorder(
-            borderRadius: BeenutTheme.radiusPanel,
-            side: BorderSide(color: tokens.line),
-          ),
-          clipBehavior: Clip.antiAlias,
-          child: Padding(
-            padding: EdgeInsets.symmetric(
-              horizontal: dense ? WorkbenchSpace.x3 : WorkbenchSpace.x5,
-              vertical: dense ? WorkbenchSpace.x2 : WorkbenchSpace.x4,
-            ),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.stretch,
-              children: [
-                _CountStatus(title: title, color: color),
-                Expanded(
-                  child: Center(
-                    child: AnimatedSwitcher(
-                      duration: disableAnimations
-                          ? Duration.zero
-                          : const Duration(milliseconds: 160),
-                      switchInCurve: Curves.easeOutCubic,
-                      switchOutCurve: Curves.easeOutCubic,
-                      child: isLoading
-                          ? _CountingProgress(
-                              key: const ValueKey('counting'),
-                              style: countStyle,
-                            )
-                          : Text(
-                              isMuted ? '—' : '$count',
-                              key: ValueKey(isMuted ? 'muted' : count),
-                              style: countStyle,
-                            ),
-                    ),
-                  ),
-                ),
-                if (constraints.maxHeight >= 128 && subtitle.isNotEmpty)
-                  Text(
-                    subtitle,
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                    textAlign: TextAlign.center,
-                    style: Theme.of(
-                      context,
-                    ).textTheme.bodyMedium?.copyWith(color: tokens.muted),
-                  ),
-              ],
-            ),
-          ),
-        );
-      },
+    final selectedPart = parts.firstWhere(
+      (part) => part.id == selectedPartTypeId,
+      orElse: () => const PartType(id: '', name: '', image: '', keywords: [], enabled: false),
     );
-  }
-}
 
-class _CountStatus extends StatelessWidget {
-  const _CountStatus({required this.title, required this.color});
+    final keywordCounts = <String, int>{
+      for (final kw in selectedPart.keywords) kw: 0,
+    };
+    for (final d in detections) {
+      if (d.label.isEmpty) continue;
+      final labelLower = d.label.toLowerCase().trim();
+      for (final kw in selectedPart.keywords) {
+        final kwLower = kw.toLowerCase().trim();
+        if (kwLower == labelLower || labelLower.contains(kwLower)) {
+          keywordCounts[kw] = (keywordCounts[kw] ?? 0) + 1;
+        }
+      }
+    }
 
-  final String title;
-  final Color color;
-
-  @override
-  Widget build(BuildContext context) {
-    return Row(
-      children: [
-        Container(
-          width: 8,
-          height: 8,
-          decoration: BoxDecoration(color: color, shape: BoxShape.circle),
+    final classBreakdowns = [
+      for (final kw in selectedPart.keywords)
+        ClassBreakdownItem(
+          label: kw,
+          count: isMuted ? 0 : (keywordCounts[kw] ?? 0),
+          color: BeenutTheme.getLabelColor(kw, selectedPart.keywords),
         ),
-        const SizedBox(width: WorkbenchSpace.x2),
-        Expanded(
-          child: Text(
-            title,
-            maxLines: 1,
-            overflow: TextOverflow.ellipsis,
-            style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-              color: color,
-              fontWeight: FontWeight.w500,
-            ),
-          ),
-        ),
-      ],
-    );
-  }
-}
+    ];
 
-class _CountingProgress extends StatelessWidget {
-  const _CountingProgress({super.key, required this.style});
+    final dashboardStatus = isMuted
+        ? CountDashboardStatus.fault
+        : (isLoading
+            ? CountDashboardStatus.counting
+            : (count > 0
+                ? CountDashboardStatus.counted
+                : CountDashboardStatus.ready));
 
-  final TextStyle? style;
-
-  @override
-  Widget build(BuildContext context) {
-    final tokens = context.workbenchColors;
-    return Column(
-      mainAxisSize: MainAxisSize.min,
-      children: [
-        Text('—', style: style?.copyWith(color: tokens.muted)),
-        const SizedBox(height: WorkbenchSpace.x2),
-        SizedBox(
-          width: 72,
-          child: LinearProgressIndicator(
-            minHeight: 3,
-            color: tokens.action,
-            backgroundColor: tokens.lineSubtle,
-            borderRadius: BeenutTheme.radiusSharp,
-          ),
-        ),
-      ],
+    return CountDashboardPanel(
+      count: count,
+      status: dashboardStatus,
+      statusTitle: title,
+      statusSubtitle: subtitle,
+      classBreakdowns: classBreakdowns,
+      statusColor: color,
+      isLoading: isLoading,
+      isMuted: isMuted,
     );
   }
 }

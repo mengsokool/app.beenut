@@ -1,30 +1,26 @@
 import 'dart:async';
-import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/cupertino.dart';
+import '../../core/android_camera_controller.dart';
+import '../../core/config_draft.dart';
+import '../../core/i18n.dart';
 import '../../core/models.dart';
 import '../../core/service_client.dart';
 import '../../core/system_permissions.dart';
 import '../../core/theme.dart';
+import '../../core/ui_scale.dart';
 import '../../core/workbench_tokens.dart';
+import '../common/settings_experience.dart';
+import '../kiosk/preview_pane.dart';
 import 'tabs/catalog_tab.dart';
 import 'tabs/config_tab.dart';
 import 'tabs/model_tab.dart';
 import 'tabs/status_tab.dart';
 import 'tabs/test_tab.dart';
-import '../../core/i18n.dart';
 
-enum SettingsDestination {
-  overview,
-  targets,
-  counting,
-  camera,
-  model,
-  hardware,
-  interface,
-  service,
-}
+enum SettingsTask { jobs, camera, display, machine }
 
-enum SettingsDestinationGroup { operation, device, system }
+enum MachineSection { model, detection, performance, devices, diagnostics }
 
 class SettingsPage extends StatefulWidget {
   const SettingsPage({
@@ -34,23 +30,31 @@ class SettingsPage extends StatefulWidget {
     required this.cameraPermission,
     required this.onRefreshCameraPermission,
     required this.onClose,
+    this.cameraController,
+    this.initialTask,
+    this.initialSection = MachineSection.model,
   });
-
   final MachineSnapshot snapshot;
   final KioskServiceClient client;
   final CameraPermissionStatus cameraPermission;
   final Future<void> Function() onRefreshCameraPermission;
   final VoidCallback onClose;
-
+  final AndroidCameraController? cameraController;
+  final SettingsTask? initialTask;
+  final MachineSection initialSection;
   @override
   State<SettingsPage> createState() => _SettingsPageState();
 }
 
 class _SettingsPageState extends State<SettingsPage> {
-  SettingsDestination activeDestination = SettingsDestination.overview;
-  final ScrollController _sidebarScrollController = ScrollController();
-  Timer? _refreshTimer;
-  Timer? _shutdownTimeout;
+  final ConfigDraft _draft = ConfigDraft();
+  final _formKey = GlobalKey<FormState>();
+  SettingsTask? _task;
+  MachineSection _section = MachineSection.model;
+  bool _applying = false;
+  bool _previewingScale = false;
+  VoidCallback? _afterApply;
+  Timer? _applyTimeout, _refreshTimer, _shutdownTimeout;
   bool _shutdownInProgress = false;
   int _shutdownRequestStartedAt = 0;
   late String _lastSaveResultSignature;
@@ -58,50 +62,80 @@ class _SettingsPageState extends State<SettingsPage> {
   @override
   void initState() {
     super.initState();
+    _task = widget.initialTask;
+    _section = widget.initialSection;
     _lastSaveResultSignature = _saveResultSignature(widget.snapshot.saveResult);
     widget.client.refreshCapabilities();
     _refreshTimer = Timer.periodic(const Duration(seconds: 4), (_) {
-      if (mounted) {
-        widget.client.refreshCapabilities();
-      }
+      if (mounted) widget.client.refreshCapabilities();
     });
   }
 
   @override
   void dispose() {
+    _applyTimeout?.cancel();
     _refreshTimer?.cancel();
     _shutdownTimeout?.cancel();
-    _sidebarScrollController.dispose();
+    if (_previewingScale) {
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        UiScaleController.clearPreview();
+      });
+    }
     super.dispose();
   }
 
   @override
   void didUpdateWidget(SettingsPage oldWidget) {
     super.didUpdateWidget(oldWidget);
-    final saveResult = widget.snapshot.saveResult;
-    final saveResultSignature = _saveResultSignature(saveResult);
-    if (saveResult.hasData && saveResultSignature != _lastSaveResultSignature) {
-      _lastSaveResultSignature = saveResultSignature;
-      if (!saveResult.ok) {
+    final result = widget.snapshot.saveResult;
+    final signature = _saveResultSignature(result);
+    if ((result.hasData || result.timestampMs > 0) &&
+        signature != _lastSaveResultSignature) {
+      _lastSaveResultSignature = signature;
+      if (_applying) {
+        _applyTimeout?.cancel();
+        _applying = false;
+        final after = _afterApply;
+        _afterApply = null;
+        if (result.ok) {
+          _draft.clear();
+          if (_previewingScale) {
+            _previewingScale = false;
+            WidgetsBinding.instance.addPostFrameCallback((_) {
+              UiScaleController.update(widget.snapshot.config.uiSettings.scale);
+              UiScaleController.clearPreview();
+            });
+          }
+          if (after != null) {
+            WidgetsBinding.instance.addPostFrameCallback((_) {
+              if (mounted) after();
+            });
+          }
+        }
+      }
+      if (!result.ok) {
         WidgetsBinding.instance.addPostFrameCallback((_) {
-          if (mounted) _showConfigSaveFailure(saveResult);
+          if (mounted) _showConfigSaveFailure(result);
         });
       }
     }
     final diagnostic = widget.snapshot.diagnostic;
     if (_shutdownInProgress &&
         diagnostic.target == 'shutdown' &&
-        !diagnostic.ok &&
         diagnostic.timestampMs >= _shutdownRequestStartedAt) {
-      WidgetsBinding.instance.addPostFrameCallback((_) {
-        if (mounted) _showShutdownDenied();
-      });
+      if (diagnostic.ok) {
+        // An accepted poweroff request can outlive the IPC connection.
+        _shutdownTimeout?.cancel();
+      } else {
+        WidgetsBinding.instance.addPostFrameCallback((_) {
+          if (mounted) _showShutdownDenied();
+        });
+      }
     }
   }
 
   String _saveResultSignature(ConfigSaveResult result) =>
       '${result.timestampMs}|${result.ok}|${result.message}|${result.detail}';
-
   void _showConfigSaveFailure(ConfigSaveResult result) {
     final scheme = Theme.of(context).colorScheme;
     final message = result.message.trim().isNotEmpty
@@ -137,98 +171,193 @@ class _SettingsPageState extends State<SettingsPage> {
       );
   }
 
-  String _destinationTitle(
-    BuildContext context,
-    SettingsDestination destination,
-  ) => switch (destination) {
-    SettingsDestination.overview => I18n.t(context, 'tab_overview'),
-    SettingsDestination.targets => I18n.t(context, 'tab_targets'),
-    SettingsDestination.counting => I18n.t(context, 'tab_counting'),
-    SettingsDestination.camera => I18n.t(context, 'tab_camera'),
-    SettingsDestination.model => I18n.t(context, 'tab_model'),
-    SettingsDestination.hardware => I18n.t(context, 'tab_hardware'),
-    SettingsDestination.interface => I18n.t(context, 'tab_interface'),
-    SettingsDestination.service => I18n.t(context, 'tab_service'),
+  String _taskTitle(SettingsTask task) => I18n.t(context, switch (task) {
+    SettingsTask.jobs => 'settings_jobs',
+    SettingsTask.camera => 'settings_camera_task',
+    SettingsTask.display => 'tab_interface',
+    SettingsTask.machine => 'settings_machine',
+  });
+  String _sectionTitle(MachineSection section) =>
+      I18n.t(context, switch (section) {
+        MachineSection.model => 'settings_model_classes',
+        MachineSection.detection => 'settings_detection_counting',
+        MachineSection.performance => 'settings_performance',
+        MachineSection.devices => 'tab_hardware',
+        MachineSection.diagnostics => 'settings_diagnostics',
+      });
+  IconData _taskIcon(SettingsTask task) => switch (task) {
+    SettingsTask.jobs => Icons.inventory_2_outlined,
+    SettingsTask.camera => Icons.videocam_outlined,
+    SettingsTask.display => Icons.text_fields_outlined,
+    SettingsTask.machine => Icons.tune_outlined,
   };
-
-  String? _destinationDescription(
-    BuildContext context,
-    SettingsDestination destination,
-  ) => switch (destination) {
-    SettingsDestination.overview => I18n.t(context, 'overview_description'),
-    SettingsDestination.targets => I18n.t(context, 'targets_description'),
-    SettingsDestination.counting => I18n.t(context, 'counting_description'),
-    SettingsDestination.camera => I18n.t(context, 'camera_description'),
-    SettingsDestination.model => I18n.t(context, 'model_description'),
-    SettingsDestination.hardware => I18n.t(context, 'hardware_description'),
-    SettingsDestination.interface => I18n.t(context, 'interface_description'),
-    SettingsDestination.service => I18n.t(context, 'service_description'),
+  IconData _sectionIcon(MachineSection section) => switch (section) {
+    MachineSection.model => Icons.memory_outlined,
+    MachineSection.detection => Icons.center_focus_strong_outlined,
+    MachineSection.performance => Icons.speed_outlined,
+    MachineSection.devices => Icons.developer_board_outlined,
+    MachineSection.diagnostics => Icons.monitor_heart_outlined,
   };
+  void _editConfig(MachineConfig edited) {
+    setState(() => _draft.update(widget.snapshot.config, edited));
+    if (_task == SettingsTask.display) {
+      _previewingScale = true;
+      UiScaleController.preview(
+        _draft.resolve(widget.snapshot.config).uiSettings.scale,
+      );
+    }
+  }
 
-  IconData _destinationIcon(SettingsDestination destination) =>
-      switch (destination) {
-        SettingsDestination.overview => Icons.monitor_heart_outlined,
-        SettingsDestination.targets => Icons.inventory_2_outlined,
-        SettingsDestination.counting => Icons.filter_alt_outlined,
-        SettingsDestination.camera => Icons.camera_alt_outlined,
-        SettingsDestination.model => Icons.psychology_outlined,
-        SettingsDestination.hardware => Icons.developer_board_outlined,
-        SettingsDestination.interface => Icons.display_settings_outlined,
-        SettingsDestination.service => Icons.home_repair_service_outlined,
-      };
+  void _discardDraft() {
+    setState(_draft.clear);
+    if (_previewingScale) {
+      _previewingScale = false;
+      UiScaleController.clearPreview();
+    }
+  }
 
-  SettingsDestinationGroup _destinationGroup(SettingsDestination destination) =>
-      switch (destination) {
-        SettingsDestination.overview ||
-        SettingsDestination.targets ||
-        SettingsDestination.counting => SettingsDestinationGroup.operation,
-        SettingsDestination.camera ||
-        SettingsDestination.model ||
-        SettingsDestination.hardware => SettingsDestinationGroup.device,
-        SettingsDestination.interface ||
-        SettingsDestination.service => SettingsDestinationGroup.system,
-      };
+  void _saveJob(MachineConfig edited) {
+    _editConfig(edited);
+    _applyConfig();
+  }
 
-  String _groupTitle(
-    BuildContext context,
-    SettingsDestinationGroup group,
-  ) => switch (group) {
-    SettingsDestinationGroup.operation => I18n.t(
-      context,
-      'settings_group_operation',
-    ),
-    SettingsDestinationGroup.device => I18n.t(context, 'settings_group_device'),
-    SettingsDestinationGroup.system => I18n.t(context, 'settings_group_system'),
-  };
+  void _saveCamera(MachineConfig edited) {
+    if (!widget.snapshot.connected) return;
+    // Camera alignment is a live control. Use the client's latest configuration
+    // so a camera change cannot overwrite unrelated settings from a live update.
+    // The client coalesces quick taps and rolls back rejected saves.
+    setState(_draft.clear);
+    widget.client.saveConfig(
+      widget.client.snapshot.config.copyWithCameraSettings(
+        edited.cameraSettings,
+      ),
+    );
+  }
 
-  Iterable<SettingsDestination> _destinationsFor(
-    SettingsDestinationGroup group,
-  ) => SettingsDestination.values.where(
-    (destination) => _destinationGroup(destination) == group,
+  void _applyConfig({VoidCallback? after}) {
+    if (_applying || !(_formKey.currentState?.validate() ?? true)) return;
+    if (!_draft.isDirty) {
+      after?.call();
+      return;
+    }
+    setState(() {
+      _applying = true;
+      _afterApply = after;
+    });
+    _applyTimeout?.cancel();
+    _applyTimeout = Timer(const Duration(seconds: 10), () {
+      if (!mounted || !_applying) return;
+      setState(() {
+        _applying = false;
+        _afterApply = null;
+      });
+      _showConfigSaveFailure(
+        ConfigSaveResult(
+          ok: false,
+          message: I18n.t(context, 'settings_save_timeout'),
+          detail: '',
+          timestampMs: 0,
+        ),
+      );
+    });
+    widget.client.saveConfig(_draft.resolve(widget.snapshot.config));
+  }
+
+  Future<void> _leaveTask(VoidCallback leave) async {
+    if (_applying) return;
+    if (!_draft.isDirty) {
+      if (_previewingScale) {
+        _previewingScale = false;
+        UiScaleController.clearPreview();
+      }
+      leave();
+      return;
+    }
+    final action = await showDialog<String>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: Text(I18n.t(context, 'settings_leave_title')),
+        content: Text(I18n.t(context, 'settings_leave_detail')),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: Text(I18n.t(context, 'settings_keep_editing')),
+          ),
+          OutlinedButton(
+            onPressed: () => Navigator.pop(context, 'discard'),
+            child: Text(I18n.t(context, 'settings_discard')),
+          ),
+          FilledButton(
+            onPressed: () => Navigator.pop(context, 'save'),
+            child: Text(
+              I18n.t(
+                context,
+                _task == SettingsTask.machine ? 'settings_apply' : 'save_btn',
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+    if (!mounted) return;
+    if (action == 'discard') {
+      _discardDraft();
+      leave();
+    }
+    if (action == 'save') _applyConfig(after: leave);
+  }
+
+  void _changeSection(MachineSection section) {
+    if (_formKey.currentState?.validate() == false) return;
+    setState(() => _section = section);
+  }
+
+  void _openTask(SettingsTask task) => _leaveTask(
+    () => setState(() {
+      _task = task;
+    }),
   );
-
-  SettingsDestination? activeDestinationForMobile;
+  void _back() {
+    if (_shutdownInProgress) return;
+    _leaveTask(() {
+      if (_task == null) {
+        widget.onClose();
+      } else {
+        setState(() => _task = null);
+      }
+    });
+  }
 
   void _beginShutdown() {
+    if (_shutdownInProgress || !widget.snapshot.connected) return;
     setState(() {
       _shutdownInProgress = true;
       _shutdownRequestStartedAt = DateTime.now().millisecondsSinceEpoch;
     });
     _shutdownTimeout?.cancel();
     _shutdownTimeout = Timer(const Duration(seconds: 10), () {
-      if (mounted && _shutdownInProgress) _showShutdownDenied();
+      if (mounted && _shutdownInProgress) _showShutdownDenied(timedOut: true);
     });
     widget.client.shutdown();
   }
 
-  void _showShutdownDenied() {
+  void _showShutdownDenied({bool timedOut = false}) {
     if (!_shutdownInProgress) return;
     _shutdownTimeout?.cancel();
     setState(() => _shutdownInProgress = false);
     ScaffoldMessenger.of(context)
       ..hideCurrentSnackBar()
       ..showSnackBar(
-        SnackBar(content: Text(I18n.t(context, 'shutdown_not_permitted'))),
+        SnackBar(
+          behavior: SnackBarBehavior.floating,
+          margin: const EdgeInsets.fromLTRB(12, 12, 12, 96),
+          content: Text(
+            I18n.t(
+              context,
+              timedOut ? 'shutdown_no_response' : 'shutdown_not_permitted',
+            ),
+          ),
+        ),
       );
   }
 
@@ -240,12 +369,12 @@ class _SettingsPageState extends State<SettingsPage> {
         return AlertDialog(
           title: Row(
             children: [
-              Icon(Icons.warning_amber_outlined, color: scheme.error, size: 20),
+              Icon(Icons.power_settings_new, color: scheme.error, size: 24),
               const SizedBox(width: 8),
               Text(
                 I18n.t(context, 'confirm_shutdown'),
                 style: TextStyle(
-                  fontSize: 14,
+                  fontSize: 18,
                   fontWeight: FontWeight.w600,
                   color: scheme.onSurface,
                 ),
@@ -254,10 +383,11 @@ class _SettingsPageState extends State<SettingsPage> {
           ),
           content: Text(
             I18n.t(context, 'shutdown_warning'),
-            style: TextStyle(fontSize: 12, color: scheme.onSurfaceVariant),
+            style: TextStyle(fontSize: 14, color: scheme.onSurfaceVariant),
           ),
           actions: [
-            TextButton(
+            OutlinedButton(
+              style: OutlinedButton.styleFrom(minimumSize: const Size(128, 56)),
               onPressed: () => Navigator.of(context).pop(),
               child: Text(
                 I18n.t(context, 'cancel'),
@@ -273,6 +403,7 @@ class _SettingsPageState extends State<SettingsPage> {
                 _beginShutdown();
               },
               style: FilledButton.styleFrom(
+                minimumSize: const Size(128, 56),
                 backgroundColor: scheme.error,
                 foregroundColor: scheme.onError,
               ),
@@ -287,312 +418,311 @@ class _SettingsPageState extends State<SettingsPage> {
     );
   }
 
-  @override
-  Widget build(BuildContext context) {
-    final config = widget.snapshot.config;
-    final state = widget.snapshot.state;
-    return Stack(
-      children: [
-        LayoutBuilder(
-          builder: (context, constraints) {
-            final bool isMobile = constraints.maxWidth < 640;
-            if (isMobile) {
-              return _buildMobileLayout(context, config, state);
-            }
-            return _buildDesktopLayout(context, config, state);
-          },
-        ),
-        if (_shutdownInProgress) const _ShutdownProgressOverlay(),
-      ],
-    );
-  }
-
-  Widget _buildDesktopLayout(
-    BuildContext context,
-    MachineConfig config,
-    MachineState state,
-  ) {
-    final scheme = Theme.of(context).colorScheme;
-    final tokens = context.workbenchColors;
-    return ColoredBox(
-      color: tokens.canvas,
+  Widget _toolbar(bool wideMachine) {
+    final colors = context.workbenchColors;
+    return Container(
+      key: const ValueKey('settings-toolbar'),
+      height: 56,
+      decoration: BoxDecoration(
+        color: colors.canvas,
+        border: Border(bottom: BorderSide(color: colors.lineSubtle)),
+      ),
+      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
       child: Row(
         children: [
-          DecoratedBox(
-            decoration: BoxDecoration(
-              color: tokens.raised,
-              border: Border(right: BorderSide(color: tokens.line)),
+          IconButton(
+            key: const ValueKey('settings-back'),
+            onPressed: _applying ? null : _back,
+            tooltip: I18n.t(
+              context,
+              _task == null ? 'back_to_kiosk' : 'back_to_settings',
             ),
-            child: SizedBox(
-              width: WorkbenchMetric.sidebarWidth,
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Padding(
-                    padding: const EdgeInsets.fromLTRB(12, 10, 16, 10),
-                    child: Row(
-                      children: [
-                        IconButton(
-                          onPressed: widget.onClose,
-                          tooltip: I18n.t(context, 'back_to_kiosk'),
-                          icon: const Icon(Icons.arrow_back, size: 20),
-                          style: IconButton.styleFrom(
-                            foregroundColor: scheme.onSurface,
-                            minimumSize: const Size.square(
-                              WorkbenchMetric.technicianHitTarget,
-                            ),
-                          ),
-                        ),
-                        const SizedBox(width: 4),
-                        Expanded(
-                          child: Text(
-                            I18n.t(context, 'settings_title'),
-                            maxLines: 1,
-                            overflow: TextOverflow.ellipsis,
-                            style: TextStyle(
-                              fontSize: 18,
-                              height: 1.3,
-                              fontWeight: FontWeight.w600,
-                              color: tokens.ink,
-                            ),
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
-                  Divider(height: 1, color: tokens.line),
-                  Expanded(
-                    child: Scrollbar(
-                      controller: _sidebarScrollController,
-                      child: ListView(
-                        controller: _sidebarScrollController,
-                        primary: false,
-                        padding: const EdgeInsets.symmetric(vertical: 10),
-                        physics: const AlwaysScrollableScrollPhysics(
-                          parent: ClampingScrollPhysics(),
-                        ),
-                        children: [
-                          for (final group
-                              in SettingsDestinationGroup.values) ...[
-                            SettingsNavGroupLabel(
-                              title: _groupTitle(context, group),
-                            ),
-                            for (final destination in _destinationsFor(group))
-                              SidebarDestination(
-                                selected: activeDestination == destination,
-                                icon: _destinationIcon(destination),
-                                title: _destinationTitle(context, destination),
-                                onPressed: () => setState(() {
-                                  activeDestination = destination;
-                                  activeDestinationForMobile = destination;
-                                }),
-                              ),
-                            if (group != SettingsDestinationGroup.values.last)
-                              const SizedBox(height: 8),
-                          ],
-                        ],
-                      ),
-                    ),
-                  ),
-                  if (widget.snapshot.capabilities.canPoweroff)
-                    Padding(
-                      padding: const EdgeInsets.fromLTRB(14, 8, 14, 14),
-                      child: SidebarShutdownButton(
-                        onPressed: () => _showShutdownConfirmDialog(context),
-                      ),
-                    ),
-                ],
-              ),
+            style: IconButton.styleFrom(minimumSize: const Size.square(48)),
+            icon: Icon(
+              _task == null ? Icons.close : Icons.arrow_back,
+              size: 20,
             ),
           ),
+          const SizedBox(width: 8),
           Expanded(
-            child: LayoutBuilder(
-              builder: (context, contentConstraints) {
-                final horizontalPadding = contentConstraints.maxWidth >= 1040
-                    ? WorkbenchSpace.x8
-                    : WorkbenchSpace.x6;
-                return ListView(
-                  padding: EdgeInsets.fromLTRB(
-                    horizontalPadding,
-                    WorkbenchSpace.x8,
-                    horizontalPadding,
-                    WorkbenchSpace.x8,
-                  ),
-                  children: [
-                    Align(
-                      alignment: Alignment.topCenter,
-                      child: ConstrainedBox(
-                        constraints: const BoxConstraints(
-                          maxWidth: WorkbenchMetric.contentMaxWidth,
-                        ),
-                        child: AnimatedSwitcher(
-                          duration: const Duration(milliseconds: 160),
-                          switchInCurve: Curves.easeOutCubic,
-                          switchOutCurve: Curves.easeOutCubic,
-                          layoutBuilder: (currentChild, previousChildren) {
-                            return Stack(
-                              alignment: Alignment.topLeft,
-                              children: [...previousChildren, ?currentChild],
-                            );
-                          },
-                          transitionBuilder:
-                              (Widget child, Animation<double> animation) {
-                                return FadeTransition(
-                                  opacity: animation,
-                                  child: child,
-                                );
-                              },
-                          child: _buildDesktopDestinationPane(
-                            context,
-                            activeDestination,
-                            config,
-                            state,
-                          ),
-                        ),
-                      ),
-                    ),
-                  ],
-                );
-              },
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildMobileLayout(
-    BuildContext context,
-    MachineConfig config,
-    MachineState state,
-  ) {
-    final currentDestination = activeDestinationForMobile;
-    final scheme = Theme.of(context).colorScheme;
-    final tokens = context.workbenchColors;
-    final canPoweroff = widget.snapshot.capabilities.canPoweroff;
-    if (currentDestination == null) {
-      return Scaffold(
-        backgroundColor: tokens.canvas,
-        appBar: AppBar(
-          backgroundColor: tokens.raised,
-          elevation: 0,
-          leading: IconButton(
-            icon: Icon(Icons.close, color: scheme.onSurface, size: 20),
-            onPressed: widget.onClose,
-          ),
-          title: Text(
-            I18n.t(context, 'settings_title'),
-            style: TextStyle(
-              fontSize: 16,
-              fontWeight: FontWeight.w600,
-              color: scheme.onSurface,
-            ),
-          ),
-          bottom: PreferredSize(
-            preferredSize: Size.fromHeight(1),
-            child: Divider(height: 1, color: scheme.outlineVariant),
-          ),
-        ),
-        body: ListView(
-          padding: const EdgeInsets.fromLTRB(8, 12, 8, 12),
-          children: [
-            for (final group in SettingsDestinationGroup.values)
-              _buildMobileNavigationGroup(context, group),
-            if (canPoweroff)
-              Padding(
-                padding: const EdgeInsets.only(top: 12),
-                child: SidebarShutdownButton(
-                  onPressed: () => _showShutdownConfirmDialog(context),
+            child: Semantics(
+              header: true,
+              child: Text(
+                _task == null
+                    ? I18n.t(context, 'settings_title')
+                    : _taskTitle(_task!),
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+                style: TextStyle(
+                  fontSize: 14,
+                  fontWeight: FontWeight.w500,
+                  color: colors.ink,
                 ),
               ),
-          ],
-        ),
-      );
-    }
-
-    return Scaffold(
-      backgroundColor: tokens.canvas,
-      appBar: AppBar(
-        backgroundColor: tokens.raised,
-        elevation: 0,
-        leading: IconButton(
-          icon: Icon(
-            Icons.arrow_back_ios_new,
-            color: scheme.onSurface,
-            size: 18,
+            ),
           ),
-          onPressed: () => setState(() => activeDestinationForMobile = null),
-        ),
-        title: Text(
-          _destinationTitle(context, currentDestination),
-          style: TextStyle(
-            fontSize: 16,
-            fontWeight: FontWeight.w600,
-            color: scheme.onSurface,
-          ),
-        ),
-        bottom: PreferredSize(
-          preferredSize: Size.fromHeight(1),
-          child: Divider(height: 1, color: scheme.outlineVariant),
-        ),
-      ),
-      body: ListView(
-        padding: const EdgeInsets.fromLTRB(8, 16, 8, 12),
-        children: [
-          if (_destinationDescription(context, currentDestination)
-              case final description?) ...[
-            Padding(
-              padding: const EdgeInsets.symmetric(
-                horizontal: WorkbenchSpace.x2,
-              ),
-              child: Text(
-                description,
-                style: Theme.of(
-                  context,
-                ).textTheme.bodyMedium?.copyWith(color: tokens.muted),
+          if (_task == SettingsTask.machine && !wideMachine) ...[
+            PopupMenuButton<MachineSection>(
+              key: const ValueKey('settings-machine-section'),
+              tooltip: I18n.t(context, 'settings_machine'),
+              enabled: !_applying,
+              initialValue: _section,
+              onSelected: _changeSection,
+              itemBuilder: (_) => [
+                for (final section in MachineSection.values)
+                  PopupMenuItem(
+                    value: section,
+                    height: 48,
+                    child: Text(_sectionTitle(section)),
+                  ),
+              ],
+              child: Container(
+                height: 48,
+                constraints: const BoxConstraints(maxWidth: 208),
+                padding: const EdgeInsets.symmetric(horizontal: 12),
+                color: colors.raised,
+                child: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Flexible(
+                      child: Text(
+                        _sectionTitle(_section),
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: const TextStyle(fontSize: 13),
+                      ),
+                    ),
+                    const SizedBox(width: 8),
+                    const Icon(Icons.expand_more, size: 18),
+                  ],
+                ),
               ),
             ),
-            const SizedBox(height: WorkbenchSpace.x4),
           ],
-          _buildDestinationContent(currentDestination, config, state),
         ],
       ),
     );
   }
 
-  Widget _buildMobileNavigationGroup(
-    BuildContext context,
-    SettingsDestinationGroup group,
-  ) {
-    final tokens = context.workbenchColors;
-    final destinations = _destinationsFor(group).toList(growable: false);
-    return Padding(
-      padding: const EdgeInsets.only(bottom: WorkbenchSpace.x3),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
+  Widget _applyBar() {
+    final colors = context.workbenchColors;
+    return Container(
+      key: const ValueKey('settings-apply-bar'),
+      decoration: BoxDecoration(
+        color: colors.surface,
+        border: Border(top: BorderSide(color: colors.lineSubtle)),
+      ),
+      padding: const EdgeInsets.all(8),
+      child: Row(
         children: [
-          SettingsNavGroupLabel(title: _groupTitle(context, group)),
-          Material(
-            color: tokens.surface,
-            shape: RoundedRectangleBorder(
-              borderRadius: BeenutTheme.radiusPanel,
-              side: BorderSide(color: tokens.line),
+          Expanded(
+            child: Text(
+              I18n.t(context, 'settings_unsaved'),
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+              style: TextStyle(color: colors.muted, fontSize: 12),
             ),
-            clipBehavior: Clip.antiAlias,
+          ),
+          const SizedBox(width: 8),
+          OutlinedButton(
+            key: const ValueKey('settings-discard'),
+            onPressed: _applying ? null : _discardDraft,
+            style: OutlinedButton.styleFrom(minimumSize: const Size(96, 48)),
+            child: Text(I18n.t(context, 'settings_discard')),
+          ),
+          const SizedBox(width: 8),
+          FilledButton(
+            key: const ValueKey('settings-apply'),
+            onPressed: _applying ? null : () => _applyConfig(),
+            style: FilledButton.styleFrom(minimumSize: const Size(128, 48)),
+            child: Text(
+              I18n.t(
+                context,
+                _applying
+                    ? 'settings_applying'
+                    : _task == SettingsTask.machine
+                    ? 'settings_apply'
+                    : 'save_btn',
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final config = _draft.resolve(widget.snapshot.config);
+    final colors = context.workbenchColors;
+    return PopScope<Object?>(
+      canPop: false,
+      onPopInvokedWithResult: (didPop, _) {
+        if (!didPop) _back();
+      },
+      child: SettingsExperience(
+        developer: _task == SettingsTask.machine,
+        child: Form(
+          key: _formKey,
+          child: Stack(
+            children: [
+              ColoredBox(
+                color: colors.canvas,
+                child: LayoutBuilder(
+                  builder: (context, size) {
+                    final wideMachine =
+                        size.maxWidth >= 1080 && size.maxHeight >= 480;
+                    return Column(
+                      children: [
+                        _toolbar(wideMachine),
+                        Expanded(
+                          child: AbsorbPointer(
+                            absorbing: _applying,
+                            child: _task == null
+                                ? _taskList(config)
+                                : switch (_task!) {
+                                    SettingsTask.jobs => _scrollContent(
+                                      'jobs',
+                                      _jobs(config),
+                                    ),
+                                    SettingsTask.display => _scrollContent(
+                                      'display',
+                                      StatusSettingsTab(
+                                        config: config,
+                                        snapshot: widget.snapshot,
+                                        cameraPermission:
+                                            widget.cameraPermission,
+                                        onRefreshCameraPermission:
+                                            widget.onRefreshCameraPermission,
+                                        onRefreshCapabilities:
+                                            widget.client.refreshCapabilities,
+                                        onSave: _editConfig,
+                                        enabled: true,
+                                        section:
+                                            StatusSettingsSection.interface,
+                                      ),
+                                    ),
+                                    SettingsTask.camera => _cameraWorkspace(
+                                      config,
+                                    ),
+                                    SettingsTask.machine => _machineWorkspace(
+                                      config,
+                                      wideMachine,
+                                    ),
+                                  },
+                          ),
+                        ),
+                        if (_task == null &&
+                            widget.snapshot.capabilities.canPoweroff)
+                          _shutdownFooter(),
+                        if (_draft.isDirty || _applying) _applyBar(),
+                      ],
+                    );
+                  },
+                ),
+              ),
+              if (_shutdownInProgress) const _ShutdownProgressOverlay(),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _scrollContent(String id, Widget child) => ListView(
+    key: ValueKey('settings-content-$id'),
+    padding: const EdgeInsets.all(12),
+    children: [
+      Align(
+        alignment: Alignment.topCenter,
+        child: ConstrainedBox(
+          constraints: const BoxConstraints(maxWidth: 760),
+          child: child,
+        ),
+      ),
+    ],
+  );
+
+  bool get _cameraPermissionNeedsAttention =>
+      widget.snapshot.state.camera != 'ready' &&
+      widget.snapshot.state.camera != 'paused' &&
+      (widget.cameraPermission.blocksCamera ||
+          widget.cameraPermission == CameraPermissionStatus.notDetermined);
+
+  Widget _shutdownFooter() => Container(
+    decoration: BoxDecoration(
+      color: context.workbenchColors.canvas,
+      border: Border(
+        top: BorderSide(color: context.workbenchColors.lineSubtle),
+      ),
+    ),
+    padding: const EdgeInsets.all(12),
+    child: Center(
+      child: ConstrainedBox(
+        constraints: const BoxConstraints(maxWidth: 760),
+        child: SidebarShutdownButton(
+          key: const ValueKey('settings-shutdown'),
+          onPressed: widget.snapshot.connected && !_applying
+              ? () => _showShutdownConfirmDialog(context)
+              : null,
+        ),
+      ),
+    ),
+  );
+
+  Widget _taskList(MachineConfig config) {
+    final colors = context.workbenchColors;
+    final state = widget.snapshot.state;
+    final issue =
+        !widget.snapshot.connected ||
+        _cameraPermissionNeedsAttention ||
+        state.camera == 'error' ||
+        state.camera == 'missing' ||
+        state.model == 'error' ||
+        state.model == 'missing';
+    return _scrollContent(
+      'tasks',
+      Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          if (issue)
+            Padding(
+              padding: const EdgeInsets.only(bottom: 8),
+              child: Material(
+                color: colors.dangerSoft,
+                child: ListTile(
+                  minTileHeight: 56,
+                  leading: Icon(Icons.error_outline, color: colors.danger),
+                  title: Text(I18n.t(context, 'settings_attention')),
+                  trailing: const Icon(Icons.chevron_right),
+                  onTap: () {
+                    _section = MachineSection.diagnostics;
+                    _openTask(SettingsTask.machine);
+                  },
+                ),
+              ),
+            ),
+          Material(
+            color: colors.canvas,
             child: Column(
               children: [
-                for (int index = 0; index < destinations.length; index++) ...[
+                for (final task in SettingsTask.values) ...[
                   SettingsNavButton(
+                    key: ValueKey('settings-task-${task.name}'),
                     selected: false,
-                    icon: _destinationIcon(destinations[index]),
-                    title: _destinationTitle(context, destinations[index]),
-                    onPressed: () => setState(() {
-                      activeDestination = destinations[index];
-                      activeDestinationForMobile = destinations[index];
-                    }),
+                    icon: _taskIcon(task),
+                    title: _taskTitle(task),
+                    value: task == SettingsTask.jobs
+                        ? config.partTypes
+                              .where((p) => p.enabled)
+                              .take(3)
+                              .map((p) => p.name)
+                              .join(' · ')
+                        : null,
+                    onPressed: () => _openTask(task),
                   ),
-                  if (index < destinations.length - 1)
-                    Divider(height: 1, indent: 48, color: tokens.lineSubtle),
+                  if (task != SettingsTask.values.last)
+                    Divider(height: 1, color: colors.lineSubtle),
                 ],
               ],
             ),
@@ -602,189 +732,299 @@ class _SettingsPageState extends State<SettingsPage> {
     );
   }
 
-  Widget _buildDestinationContent(
-    SettingsDestination destination,
-    MachineConfig config,
-    MachineState state,
-  ) {
-    switch (destination) {
-      case SettingsDestination.overview:
-        return StatusSettingsTab(
-          key: ValueKey(destination),
-          config: config,
-          snapshot: widget.snapshot,
-          cameraPermission: widget.cameraPermission,
-          onRefreshCameraPermission: widget.onRefreshCameraPermission,
-          onRefreshCapabilities: widget.client.refreshCapabilities,
-          onSave: widget.client.saveConfig,
-          enabled: true,
-          section: StatusSettingsSection.overview,
-        );
-      case SettingsDestination.targets:
-        return Column(
-          key: ValueKey(destination),
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            PartCatalogEditor(
-              config: config,
-              modelLabels: state.modelLabels,
-              enabled: true,
-              onSave: widget.client.saveConfig,
+  Widget _jobs(MachineConfig config) {
+    if (config.partTypes.isEmpty) {
+      return Column(
+        children: [
+          Text(I18n.t(context, 'no_targets_found')),
+          const SizedBox(height: 12),
+          OutlinedButton(
+            onPressed: () => _openTask(SettingsTask.machine),
+            child: Text(I18n.t(context, 'settings_machine')),
+          ),
+        ],
+      );
+    }
+    return PartCatalogEditor(
+      config: config,
+      modelLabels: widget.snapshot.state.modelLabels,
+      enabled: true,
+      allowClassMapping: false,
+      onSave: _saveJob,
+    );
+  }
+
+  Widget _preview(MachineConfig config) {
+    // Show the applied camera and class mapping until the draft is acknowledged.
+    final live = widget.snapshot.config;
+    final state = widget.snapshot.state;
+    final part = live.partTypes
+        .where((p) => p.id == state.selectedPartType)
+        .firstOrNull;
+    final camera = live.cameraSettings;
+    // The native pipeline can crop capture frames before publishing preview.
+    final previewWidth = int.tryParse(
+      RegExp(
+            r'width=(?:\(int\))?(\d+)',
+          ).firstMatch(state.previewCaps)?.group(1) ??
+          '',
+    );
+    final previewHeight = int.tryParse(
+      RegExp(
+            r'height=(?:\(int\))?(\d+)',
+          ).firstMatch(state.previewCaps)?.group(1) ??
+          '',
+    );
+    final aspectRatio =
+        previewWidth != null &&
+            previewWidth > 0 &&
+            previewHeight != null &&
+            previewHeight > 0
+        ? previewWidth / previewHeight
+        : camera.height > 0
+        ? camera.width / camera.height
+        : 4 / 3;
+    return NativePreviewPane(
+      key: const ValueKey('settings-native-preview'),
+      state: state,
+      connected: widget.snapshot.connected,
+      previewSocket: live.previewSocket,
+      keywords: part?.keywords ?? const [],
+      classNames: part?.classNames ?? const {},
+      client: widget.client,
+      cameraController: widget.cameraController,
+      aspectRatio: aspectRatio,
+    );
+  }
+
+  Widget _metrics() {
+    final state = widget.snapshot.state;
+    final colors = context.workbenchColors;
+    return Container(
+      key: const ValueKey('settings-live-metrics'),
+      width: double.infinity,
+      padding: const EdgeInsets.all(12),
+      color: colors.surface,
+      child: Wrap(
+        spacing: 20,
+        runSpacing: 8,
+        children: [
+          Text(
+            '${state.count} ${I18n.t(context, 'items_unit')}',
+            style: const TextStyle(fontSize: 20, fontWeight: FontWeight.w600),
+          ),
+          Text('${state.inferenceFps.toStringAsFixed(1)} fps'),
+          Text('${state.processingMs} ms'),
+          if (state.previewPaused)
+            IconButton(
+              onPressed: () => widget.client.setPreviewPaused(false),
+              icon: const Icon(Icons.play_arrow),
+              tooltip: I18n.t(context, 'resume_preview'),
             ),
-          ],
-        );
-      case SettingsDestination.counting:
-        return Column(
-          key: ValueKey(destination),
-          children: [
-            ConfigEditor(
-              key: const ValueKey('counting-trigger-settings'),
-              config: config,
-              capabilities: widget.snapshot.capabilities,
-              enabled: true,
-              onSave: widget.client.saveConfig,
-              section: ConfigEditorSection.counting,
-            ),
-            ModelSettingsTab(
-              key: const ValueKey('counting-behavior-settings'),
-              config: config,
-              state: state,
-              capabilities: widget.snapshot.capabilities,
-              enabled: true,
-              onSave: widget.client.saveConfig,
-              section: ModelSettingsSection.counting,
-            ),
-          ],
-        );
-      case SettingsDestination.camera:
-        return ConfigEditor(
-          key: ValueKey(destination),
-          config: config,
-          capabilities: widget.snapshot.capabilities,
-          enabled: true,
-          onSave: widget.client.saveConfig,
-          section: ConfigEditorSection.camera,
-        );
-      case SettingsDestination.model:
-        return ModelSettingsTab(
-          key: ValueKey(destination),
-          config: config,
-          state: state,
-          capabilities: widget.snapshot.capabilities,
-          enabled: true,
-          onSave: widget.client.saveConfig,
-          section: ModelSettingsSection.model,
-        );
-      case SettingsDestination.hardware:
-        return ConfigEditor(
-          key: ValueKey(destination),
-          config: config,
-          capabilities: widget.snapshot.capabilities,
-          enabled: true,
-          onSave: widget.client.saveConfig,
-          section: ConfigEditorSection.hardware,
-        );
-      case SettingsDestination.interface:
-        return StatusSettingsTab(
-          key: ValueKey(destination),
-          config: config,
-          snapshot: widget.snapshot,
-          cameraPermission: widget.cameraPermission,
-          onRefreshCameraPermission: widget.onRefreshCameraPermission,
-          onRefreshCapabilities: widget.client.refreshCapabilities,
-          onSave: widget.client.saveConfig,
-          enabled: true,
-          section: StatusSettingsSection.interface,
-        );
-      case SettingsDestination.service:
-        return Column(
-          key: ValueKey(destination),
-          children: [
-            HardwareTestTab(
-              key: const ValueKey('service-diagnostics-settings'),
-              state: state,
-              diagnostic: widget.snapshot.diagnostic,
-              client: widget.client,
-            ),
+          if (state.temperature > 0 && state.thermalState != 'unknown')
+            Text('${state.temperature.toStringAsFixed(1)} °C'),
+        ],
+      ),
+    );
+  }
+
+  Widget _monitor(MachineConfig config) => Column(
+    children: [
+      Expanded(child: _preview(config)),
+      _metrics(),
+    ],
+  );
+
+  Widget _cameraWorkspace(MachineConfig config) => LayoutBuilder(
+    builder: (context, size) {
+      final controls = ConfigEditor(
+        config: config,
+        capabilities: widget.snapshot.capabilities,
+        enabled: widget.snapshot.connected,
+        onSave: _saveCamera,
+        section: ConfigEditorSection.camera,
+      );
+      final needsPermission = _cameraPermissionNeedsAttention;
+      final form = Column(
+        children: [
+          if (needsPermission)
             StatusSettingsTab(
-              key: const ValueKey('service-status-settings'),
               config: config,
               snapshot: widget.snapshot,
               cameraPermission: widget.cameraPermission,
               onRefreshCameraPermission: widget.onRefreshCameraPermission,
               onRefreshCapabilities: widget.client.refreshCapabilities,
-              onSave: widget.client.saveConfig,
+              onSave: _editConfig,
               enabled: true,
-              section: StatusSettingsSection.service,
+              section: StatusSettingsSection.cameraPermission,
             ),
-            ModelSettingsTab(
-              key: const ValueKey('service-fallback-settings'),
-              config: config,
-              state: state,
-              capabilities: widget.snapshot.capabilities,
-              enabled: true,
-              onSave: widget.client.saveConfig,
-              section: ModelSettingsSection.service,
+          controls,
+        ],
+      );
+      if (size.maxWidth >= 700) {
+        return Row(
+          children: [
+            Expanded(
+              child: Padding(
+                padding: const EdgeInsets.all(12),
+                child: _monitor(config),
+              ),
             ),
+            Expanded(child: _scrollContent('camera', form)),
           ],
         );
+      }
+      return Column(
+        children: [
+          SizedBox(
+            height: (size.maxHeight * .44).clamp(100, 220),
+            child: Padding(
+              padding: const EdgeInsets.all(8),
+              child: _preview(config),
+            ),
+          ),
+          if (widget.snapshot.state.previewPaused)
+            TextButton.icon(
+              onPressed: () => widget.client.setPreviewPaused(false),
+              icon: const Icon(Icons.play_arrow),
+              label: Text(I18n.t(context, 'resume_preview')),
+            ),
+          Expanded(child: _scrollContent('camera', form)),
+        ],
+      );
+    },
+  );
+  Widget _machineWorkspace(MachineConfig config, bool wide) {
+    final form = _scrollContent(
+      'machine-${_section.name}',
+      _machineForm(config),
+    );
+    if (!wide) {
+      return form;
     }
-  }
-
-  Widget _buildDesktopDestinationPane(
-    BuildContext context,
-    SettingsDestination destination,
-    MachineConfig config,
-    MachineState state,
-  ) {
-    return Column(
-      key: ValueKey('destination-pane-$destination'),
-      crossAxisAlignment: CrossAxisAlignment.start,
+    final colors = context.workbenchColors;
+    return Row(
       children: [
-        SettingsContentHeader(
-          title: _destinationTitle(context, destination),
-          description: _destinationDescription(context, destination),
+        SizedBox(
+          width: 184,
+          child: ColoredBox(
+            color: colors.surface,
+            child: ListView(
+              padding: const EdgeInsets.symmetric(vertical: 8),
+              children: [
+                for (final section in MachineSection.values)
+                  SidebarDestination(
+                    selected: _section == section,
+                    icon: _sectionIcon(section),
+                    title: _sectionTitle(section),
+                    onPressed: () => _changeSection(section),
+                  ),
+              ],
+            ),
+          ),
         ),
-        const SizedBox(height: WorkbenchSpace.x6),
-        _buildDestinationContent(destination, config, state),
+        Expanded(child: form),
       ],
     );
   }
-}
 
-class SettingsContentHeader extends StatelessWidget {
-  const SettingsContentHeader({
-    super.key,
-    required this.title,
-    this.description,
-  });
-
-  final String title;
-  final String? description;
-
-  @override
-  Widget build(BuildContext context) {
-    final textTheme = Theme.of(context).textTheme;
-    final tokens = context.workbenchColors;
-    return Semantics(
-      header: true,
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
+  Widget _machineForm(MachineConfig config) {
+    final state = widget.snapshot.state;
+    ModelSettingsTab model(ModelSettingsSection section) => ModelSettingsTab(
+      config: config,
+      state: state,
+      capabilities: widget.snapshot.capabilities,
+      enabled: true,
+      onSave: _editConfig,
+      section: section,
+    );
+    ConfigEditor camera(ConfigEditorSection section) => ConfigEditor(
+      config: config,
+      capabilities: widget.snapshot.capabilities,
+      enabled: true,
+      onSave: _editConfig,
+      section: section,
+    );
+    final modelUnapplied =
+        config.modelSettings.ncnnBinPath !=
+            widget.snapshot.config.modelSettings.ncnnBinPath ||
+        config.modelSettings.modelPath !=
+            widget.snapshot.config.modelSettings.modelPath ||
+        config.modelSettings.hefPath !=
+            widget.snapshot.config.modelSettings.hefPath ||
+        config.modelSettings.engine !=
+            widget.snapshot.config.modelSettings.engine ||
+        config.modelSettings.labelsPath !=
+            widget.snapshot.config.modelSettings.labelsPath ||
+        config.modelSettings.labelsMode !=
+            widget.snapshot.config.modelSettings.labelsMode;
+    return switch (_section) {
+      MachineSection.model => Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          Text(title, style: textTheme.headlineSmall),
-          if (description case final value?) ...[
-            const SizedBox(height: WorkbenchSpace.x1),
-            ConstrainedBox(
-              constraints: const BoxConstraints(maxWidth: 640),
-              child: Text(
-                value,
-                style: textTheme.bodyMedium?.copyWith(color: tokens.muted),
-              ),
+          model(ModelSettingsSection.model),
+          if (modelUnapplied)
+            Padding(
+              padding: const EdgeInsets.all(12),
+              child: Text(I18n.t(context, 'settings_apply_model_first')),
+            )
+          else
+            PartCatalogEditor(
+              config: config,
+              modelLabels: state.modelLabels,
+              allowClassMapping: true,
+              enabled: true,
+              onSave: _editConfig,
             ),
-          ],
         ],
       ),
-    );
+      MachineSection.detection => Column(
+        children: [
+          camera(ConfigEditorSection.counting),
+          model(ModelSettingsSection.detection),
+          model(ModelSettingsSection.counting),
+        ],
+      ),
+      MachineSection.performance => Column(
+        children: [
+          model(ModelSettingsSection.performance),
+          camera(ConfigEditorSection.performance),
+        ],
+      ),
+      MachineSection.devices => Column(
+        children: [camera(ConfigEditorSection.hardware)],
+      ),
+      MachineSection.diagnostics => Column(
+        children: [
+          HardwareTestTab(
+            state: state,
+            diagnostic: widget.snapshot.diagnostic,
+            client: widget.client,
+          ),
+          StatusSettingsTab(
+            config: config,
+            snapshot: widget.snapshot,
+            cameraPermission: widget.cameraPermission,
+            onRefreshCameraPermission: widget.onRefreshCameraPermission,
+            onRefreshCapabilities: widget.client.refreshCapabilities,
+            onSave: _editConfig,
+            enabled: true,
+            section: StatusSettingsSection.overview,
+          ),
+          StatusSettingsTab(
+            config: config,
+            snapshot: widget.snapshot,
+            cameraPermission: widget.cameraPermission,
+            onRefreshCameraPermission: widget.onRefreshCameraPermission,
+            onRefreshCapabilities: widget.client.refreshCapabilities,
+            onSave: _editConfig,
+            enabled: true,
+            section: StatusSettingsSection.service,
+          ),
+          model(ModelSettingsSection.service),
+        ],
+      ),
+    };
   }
 }
 
@@ -799,14 +1039,15 @@ class SettingsNavGroupLabel extends StatelessWidget {
     return Semantics(
       header: true,
       child: Padding(
-        padding: const EdgeInsets.fromLTRB(16, 8, 16, 6),
+        padding: const EdgeInsets.fromLTRB(14, 8, 14, 4),
         child: Text(
           title,
           style: TextStyle(
             color: tokens.muted,
-            fontSize: 11,
+            fontSize: 11.5,
             height: 1.35,
-            fontWeight: FontWeight.w400,
+            fontWeight: FontWeight.w600,
+            letterSpacing: 0.3,
           ),
         ),
       ),
@@ -821,50 +1062,72 @@ class SettingsNavButton extends StatelessWidget {
     required this.icon,
     required this.title,
     required this.onPressed,
+    this.value,
   });
 
   final bool selected;
   final IconData icon;
   final String title;
   final VoidCallback onPressed;
+  final String? value;
 
   @override
   Widget build(BuildContext context) {
     final tokens = context.workbenchColors;
+    final color = selected ? tokens.ink : tokens.muted;
     return Material(
-      color: selected ? tokens.actionSoft : Colors.transparent,
+      color: selected ? tokens.lineSubtle : Colors.transparent,
       child: InkWell(
         onTap: onPressed,
         child: ConstrainedBox(
           constraints: const BoxConstraints(minHeight: 48),
           child: Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
-            child: Row(
-              children: [
-                Icon(
-                  icon,
-                  size: 20,
-                  color: selected ? tokens.actionText : tokens.muted,
-                ),
-                const SizedBox(width: 14),
-                Expanded(
-                  child: Text(
-                    title,
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                    style: TextStyle(
-                      color: selected ? tokens.actionText : tokens.ink,
-                      fontSize: 13,
-                      fontWeight: FontWeight.w500,
+            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+            child: LayoutBuilder(
+              builder: (context, constraints) => Row(
+                children: [
+                  Icon(icon, size: 20, color: color),
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: Text(
+                      title,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: TextStyle(
+                        color: selected ? tokens.actionText : tokens.ink,
+                        fontSize: 14,
+                        fontWeight: FontWeight.w500,
+                      ),
                     ),
                   ),
-                ),
-                Icon(
-                  Icons.chevron_right,
-                  size: 18,
-                  color: selected ? tokens.actionText : tokens.muted,
-                ),
-              ],
+                  if (constraints.maxWidth >= 560 &&
+                      value?.isNotEmpty == true) ...[
+                    const SizedBox(width: 16),
+                    ConstrainedBox(
+                      constraints: BoxConstraints(
+                        maxWidth: constraints.maxWidth * 0.35,
+                      ),
+                      child: Text(
+                        value!,
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        textAlign: TextAlign.end,
+                        style: TextStyle(
+                          color: tokens.muted,
+                          fontSize: 12,
+                          fontWeight: FontWeight.w400,
+                        ),
+                      ),
+                    ),
+                  ],
+                  const SizedBox(width: 12),
+                  Icon(
+                    Icons.chevron_right_rounded,
+                    size: 18,
+                    color: tokens.muted.withValues(alpha: 0.5),
+                  ),
+                ],
+              ),
             ),
           ),
         ),
@@ -891,24 +1154,32 @@ class SidebarDestination extends StatelessWidget {
   Widget build(BuildContext context) {
     final tokens = context.workbenchColors;
     return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 2),
+      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 1),
       child: Material(
-        color: selected ? tokens.actionSoft : Colors.transparent,
-        borderRadius: BeenutTheme.radiusSharp,
+        color: selected ? tokens.lineSubtle : Colors.transparent,
+        borderRadius: BorderRadius.zero,
         child: InkWell(
           onTap: onPressed,
-          borderRadius: BeenutTheme.radiusSharp,
+          borderRadius: BorderRadius.zero,
           child: ConstrainedBox(
             constraints: const BoxConstraints(
               minHeight: WorkbenchMetric.technicianHitTarget,
             ),
-            child: Padding(
+            child: Container(
+              decoration: BoxDecoration(
+                border: Border(
+                  left: BorderSide(
+                    color: selected ? tokens.action : Colors.transparent,
+                    width: 3,
+                  ),
+                ),
+              ),
               padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
               child: Row(
                 children: [
                   Icon(
                     icon,
-                    size: 20,
+                    size: 17,
                     color: selected ? tokens.actionText : tokens.muted,
                   ),
                   const SizedBox(width: 12),
@@ -916,8 +1187,10 @@ class SidebarDestination extends StatelessWidget {
                     child: Text(
                       title,
                       style: TextStyle(
-                        fontSize: 13.5,
-                        fontWeight: FontWeight.w500,
+                        fontSize: 15,
+                        fontWeight: selected
+                            ? FontWeight.w600
+                            : FontWeight.w500,
                         color: selected ? tokens.actionText : tokens.ink,
                       ),
                     ),
@@ -935,41 +1208,22 @@ class SidebarDestination extends StatelessWidget {
 class SidebarShutdownButton extends StatelessWidget {
   const SidebarShutdownButton({super.key, required this.onPressed});
 
-  final VoidCallback onPressed;
+  final VoidCallback? onPressed;
 
   @override
   Widget build(BuildContext context) {
     final tokens = context.workbenchColors;
-    final label = I18n.t(context, 'shutdown_btn');
-    return Tooltip(
-      message: label,
-      child: Material(
-        color: tokens.dangerSoft,
-        borderRadius: BeenutTheme.radiusSharp,
-        child: InkWell(
-          onTap: onPressed,
-          borderRadius: BeenutTheme.radiusSharp,
-          child: Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 11),
-            child: Row(
-              children: [
-                Icon(Icons.power_settings_new, size: 20, color: tokens.danger),
-                const SizedBox(width: 14),
-                Expanded(
-                  child: Text(
-                    label,
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                    style: TextStyle(
-                      fontSize: 13.5,
-                      fontWeight: FontWeight.w500,
-                      color: tokens.danger,
-                    ),
-                  ),
-                ),
-              ],
-            ),
-          ),
+    return SizedBox(
+      width: double.infinity,
+      child: OutlinedButton.icon(
+        onPressed: onPressed,
+        icon: const Icon(Icons.power_settings_new, size: 24),
+        label: Text(I18n.t(context, 'shutdown_btn')),
+        style: OutlinedButton.styleFrom(
+          minimumSize: const Size(0, 56),
+          foregroundColor: tokens.danger,
+          side: BorderSide(color: tokens.line),
+          textStyle: const TextStyle(fontSize: 16, fontWeight: FontWeight.w500),
         ),
       ),
     );
@@ -1013,7 +1267,7 @@ class _ShutdownProgressOverlay extends StatelessWidget {
                   ),
                   const SizedBox(height: 4),
                   Text(
-                    I18n.t(context, 'waiting_daemon_stop'),
+                    I18n.t(context, 'shutdown_waiting'),
                     textAlign: TextAlign.center,
                     style: TextStyle(
                       color: scheme.onSurfaceVariant,

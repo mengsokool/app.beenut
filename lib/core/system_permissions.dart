@@ -52,7 +52,7 @@ class SystemPermissions {
   );
 
   static Future<CameraPermissionStatus> currentCameraStatus() async {
-    if (!Platform.isMacOS) {
+    if (!Platform.isMacOS && !Platform.isAndroid) {
       return CameraPermissionStatus.unsupported;
     }
     try {
@@ -64,7 +64,7 @@ class SystemPermissions {
   }
 
   static Future<CameraPermissionStatus> requestCameraIfNeeded() async {
-    if (!Platform.isMacOS) {
+    if (!Platform.isMacOS && !Platform.isAndroid) {
       return CameraPermissionStatus.unsupported;
     }
     try {
@@ -76,7 +76,7 @@ class SystemPermissions {
   }
 
   static Future<void> openCameraPrivacySettings() async {
-    if (!Platform.isMacOS) return;
+    if (!Platform.isMacOS && !Platform.isAndroid) return;
     try {
       await _channel.invokeMethod<void>('openCameraSettings');
     } catch (_) {}

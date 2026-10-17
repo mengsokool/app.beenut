@@ -3,7 +3,7 @@ import '../../../core/models.dart';
 import '../../../core/i18n.dart';
 import '../../common/widgets.dart';
 
-enum ConfigEditorSection { camera, counting, hardware }
+enum ConfigEditorSection { camera, performance, counting, hardware }
 
 class ConfigEditor extends StatefulWidget {
   const ConfigEditor({
@@ -51,6 +51,7 @@ class _ConfigEditorState extends State<ConfigEditor> {
   ];
   static const previewTransportLabels = {
     'auto': 'Auto',
+    'android_ffi': 'Android FFI',
     'iosurface_nv12': 'IOSurface NV12',
     'dmabuf_egl': 'DMA-BUF/EGL',
     'shm_nv12': 'Shared memory NV12',
@@ -58,6 +59,7 @@ class _ConfigEditorState extends State<ConfigEditor> {
     'mjpeg': 'MJPEG fallback',
   };
   static const configurablePreviewTransports = {
+    'android_ffi',
     'iosurface_nv12',
     'dmabuf_egl',
     'shm_nv12',
@@ -93,8 +95,7 @@ class _ConfigEditorState extends State<ConfigEditor> {
   }
 
   String _resolutionLabel(int width, int height) {
-    final size = width < height ? width : height;
-    return '${size}p';
+    return '$width × $height';
   }
 
   List<({String label, int width, int height})> _resolutionOptions({
@@ -187,23 +188,31 @@ class _ConfigEditorState extends State<ConfigEditor> {
     );
     final resolutionLabel = _resolutionLabel(width, height);
     final cameraOptionsMap = <String, ({String source, String device})>{};
-    cameraOptionsMap[I18n.t(context, 'auto_detect')] = (
-      source: 'auto',
-      device: '',
-    );
     for (final item in widget.capabilities.cameras) {
       final name = item['name'] as String? ?? '';
       final src = item['source'] as String? ?? '';
       final dev = item['device'] as String? ?? '';
-      if (name.isNotEmpty && src.isNotEmpty) {
+      if (name.isNotEmpty &&
+          src.isNotEmpty &&
+          (widget.section == ConfigEditorSection.performance ||
+              src != 'mock')) {
         cameraOptionsMap[name] = (source: src, device: dev);
       }
     }
-    if (!cameraOptionsMap.containsKey('Test pattern (Mock)')) {
+    if (widget.section == ConfigEditorSection.performance &&
+        !cameraOptionsMap.containsKey('Test pattern (Mock)')) {
       cameraOptionsMap['Test pattern (Mock)'] = (source: 'mock', device: '');
     }
 
-    String activeCameraOption = I18n.t(context, 'auto_detect');
+    if (cameraOptionsMap.length > 1 ||
+        widget.section == ConfigEditorSection.performance) {
+      cameraOptionsMap[I18n.t(context, 'auto_detect')] = (
+        source: 'auto',
+        device: '',
+      );
+    }
+    String activeCameraOption =
+        cameraOptionsMap.keys.firstOrNull ?? I18n.t(context, 'auto_detect');
     for (final entry in cameraOptionsMap.entries) {
       if (entry.value.source == source && entry.value.device == camera.device) {
         activeCameraOption = entry.key;
@@ -234,55 +243,81 @@ class _ConfigEditorState extends State<ConfigEditor> {
       tone: hardwareTriggerAvailable ? RowTone.success : RowTone.neutral,
     );
 
+    Widget sourceSetting() => SelectSettingRow(
+      label: I18n.t(context, 'camera_source'),
+      description: '',
+      value: activeCameraOption,
+      options: cameraOptionsMap.keys.toList(),
+      enabled: widget.enabled,
+      onSelected: (value) {
+        final selected = cameraOptionsMap[value];
+        if (selected != null) {
+          Map<String, dynamic>? matchedCamera;
+          for (final item in widget.capabilities.cameras) {
+            if (item['source'] == selected.source &&
+                item['device'] == selected.device) {
+              matchedCamera = item;
+              break;
+            }
+          }
+
+          int? defaultWidth;
+          int? defaultHeight;
+          if (matchedCamera != null) {
+            final formats = matchedCamera['formats'] as List?;
+            if (formats != null && formats.isNotEmpty) {
+              final firstFormat = formats.first;
+              if (firstFormat is Map<String, dynamic>) {
+                defaultWidth = firstFormat['width'] as int?;
+                defaultHeight = firstFormat['height'] as int?;
+              }
+            }
+          }
+
+          _updateCamera(
+            camera.copyWith(
+              source: selected.source,
+              device: selected.device,
+              width: defaultWidth ?? camera.width,
+              height: defaultHeight ?? camera.height,
+            ),
+          );
+        }
+      },
+    );
+
     return Column(
       children: [
         if (widget.section == ConfigEditorSection.camera)
           SettingsGroup(
             title: I18n.t(context, 'camera_basics'),
+            showHeader: false,
             icon: Icons.camera_alt_outlined,
             children: [
-              SelectSettingRow(
-                label: I18n.t(context, 'camera_source'),
+              if (cameraOptionsMap.length > 1) sourceSetting(),
+              SwitchSettingRow(
+                label: I18n.t(context, 'flip_horizontal'),
                 description: '',
-                value: activeCameraOption,
-                options: cameraOptionsMap.keys.toList(),
+                value: camera.flipHorizontal,
                 enabled: widget.enabled,
-                onSelected: (value) {
-                  final selected = cameraOptionsMap[value];
-                  if (selected != null) {
-                    Map<String, dynamic>? matchedCamera;
-                    for (final item in widget.capabilities.cameras) {
-                      if (item['source'] == selected.source &&
-                          item['device'] == selected.device) {
-                        matchedCamera = item;
-                        break;
-                      }
-                    }
-
-                    int? defaultWidth;
-                    int? defaultHeight;
-                    if (matchedCamera != null) {
-                      final formats = matchedCamera['formats'] as List?;
-                      if (formats != null && formats.isNotEmpty) {
-                        final firstFormat = formats.first;
-                        if (firstFormat is Map<String, dynamic>) {
-                          defaultWidth = firstFormat['width'] as int?;
-                          defaultHeight = firstFormat['height'] as int?;
-                        }
-                      }
-                    }
-
-                    _updateCamera(
-                      camera.copyWith(
-                        source: selected.source,
-                        device: selected.device,
-                        width: defaultWidth ?? camera.width,
-                        height: defaultHeight ?? camera.height,
-                      ),
-                    );
-                  }
-                },
+                onChanged: (value) =>
+                    _updateCamera(camera.copyWith(flipHorizontal: value)),
               ),
+              SwitchSettingRow(
+                label: I18n.t(context, 'flip_vertical'),
+                description: '',
+                value: camera.flipVertical,
+                enabled: widget.enabled,
+                onChanged: (value) =>
+                    _updateCamera(camera.copyWith(flipVertical: value)),
+              ),
+            ],
+          ),
+        if (widget.section == ConfigEditorSection.performance)
+          SettingsGroup(
+            title: I18n.t(context, 'settings_capture'),
+            children: [
+              sourceSetting(),
               SelectSettingRow(
                 label: I18n.t(context, 'resolution'),
                 description: '',
@@ -314,25 +349,20 @@ class _ConfigEditorState extends State<ConfigEditor> {
                   }
                 },
               ),
-              SwitchSettingRow(
-                label: I18n.t(context, 'flip_horizontal'),
+              StepperSettingRow(
+                label: I18n.t(context, 'camera_capture_fps'),
                 description: '',
-                value: camera.flipHorizontal,
+                value: camera.fps,
+                min: 1,
+                max: 60,
+                unit: 'fps',
                 enabled: widget.enabled,
                 onChanged: (value) =>
-                    _updateCamera(camera.copyWith(flipHorizontal: value)),
-              ),
-              SwitchSettingRow(
-                label: I18n.t(context, 'flip_vertical'),
-                description: '',
-                value: camera.flipVertical,
-                enabled: widget.enabled,
-                onChanged: (value) =>
-                    _updateCamera(camera.copyWith(flipVertical: value)),
+                    _updateCamera(camera.copyWith(fps: value)),
               ),
             ],
           ),
-        if (widget.section == ConfigEditorSection.camera)
+        if (widget.section == ConfigEditorSection.performance)
           SettingsGroup(
             title: I18n.t(context, 'camera_pipeline'),
             description: I18n.t(context, 'camera_pipeline_desc'),
@@ -362,12 +392,12 @@ class _ConfigEditorState extends State<ConfigEditor> {
               ),
             ],
           ),
-        if (widget.section == ConfigEditorSection.counting)
+        if (widget.section == ConfigEditorSection.counting &&
+            hardwareTriggerAvailable)
           SettingsGroup(
             title: I18n.t(context, 'count_trigger'),
             icon: Icons.play_circle_outline,
             children: [
-              hardwareInfoRow(),
               SelectSettingRow(
                 label: I18n.t(context, 'trigger_mode'),
                 description: hardwareTriggerAvailable

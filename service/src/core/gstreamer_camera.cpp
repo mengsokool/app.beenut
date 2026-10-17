@@ -165,6 +165,13 @@ bool GStreamerCamera::setAiMaxFps(double fps)
     return start();
 }
 
+bool GStreamerCamera::setAiInputSize(int size)
+{
+    if (aiInputSize_ == size) return ready_;
+    aiInputSize_ = size;
+    return start();
+}
+
 bool GStreamerCamera::setLowPowerMode(bool enabled)
 {
     if (lowPowerMode_ == enabled) {
@@ -209,7 +216,7 @@ void GStreamerCamera::stop()
 
 bool GStreamerCamera::isReady() const { return ready_; }
 QString GStreamerCamera::detail() const { return detail_; }
-QString GStreamerCamera::previewCaps() const { return QString("%1,format=NV12").arg(previewCapsDescription()); }
+QString GStreamerCamera::previewCaps() const { return QString("%1,format=NV12,colorimetry=bt601").arg(previewCapsDescription()); }
 QString GStreamerCamera::previewTransport() const
 {
 #ifdef __linux__
@@ -455,7 +462,7 @@ bool GStreamerCamera::publishDmaBufFrame(GstSample* sample, const GstVideoInfo& 
         quint32 strides[4];
     } wire {};
     wire.magic = 0x31464244u;
-    wire.version = 1;
+    wire.version = 2;
     wire.width = static_cast<quint32>(GST_VIDEO_INFO_WIDTH(&info));
     wire.height = static_cast<quint32>(GST_VIDEO_INFO_HEIGHT(&info));
     wire.fourcc = 0x3231564Eu;  // DRM_FORMAT_NV12
@@ -467,27 +474,20 @@ bool GStreamerCamera::publishDmaBufFrame(GstSample* sample, const GstVideoInfo& 
         wire.strides[plane] = static_cast<quint32>(GST_VIDEO_INFO_PLANE_STRIDE(&info, plane));
     }
 
+    // Locate each plane within GstMemory, including buffer and video-meta offsets.
     int fds[4] = {-1, -1, -1, -1};
+    auto* videoMeta = gst_buffer_get_video_meta(buffer);
     for (quint32 plane = 0; plane < wire.nPlanes; ++plane) {
-        GstMemory* memory = gst_buffer_peek_memory(buffer, plane < memoryCount ? plane : 0);
-        if (memory == nullptr || !gst_is_dmabuf_memory(memory)) {
-            for (int fd : fds) {
-                if (fd >= 0) {
-                    ::close(fd);
-                }
-            }
-            return false;
-        }
-        const int fd = gst_dmabuf_memory_get_fd(memory);
-        fds[plane] = ::dup(fd);
-        if (fds[plane] < 0) {
-            for (int existing : fds) {
-                if (existing >= 0) {
-                    ::close(existing);
-                }
-            }
-            return false;
-        }
+        const gsize offset = videoMeta ? videoMeta->offset[plane] : GST_VIDEO_INFO_PLANE_OFFSET(&info, plane);
+        guint index = 0, length = 0;
+        gsize skip = 0;
+        if (!gst_buffer_find_memory(buffer, offset, 1, &index, &length, &skip) || length != 1) return false;
+        GstMemory* memory = gst_buffer_peek_memory(buffer, index);
+        if (!memory || !gst_is_dmabuf_memory(memory)) return false;
+        wire.offsets[plane] = static_cast<quint32>(memory->offset + skip);
+        wire.strides[plane] = static_cast<quint32>(videoMeta ? videoMeta->stride[plane] : GST_VIDEO_INFO_PLANE_STRIDE(&info, plane));
+        // sendmsg duplicates these borrowed descriptors into the receiving process.
+        fds[plane] = gst_dmabuf_memory_get_fd(memory);
     }
 
     char control[CMSG_SPACE(sizeof(int) * 4)] {};
@@ -507,21 +507,43 @@ bool GStreamerCamera::publishDmaBufFrame(GstSample* sample, const GstVideoInfo& 
     std::memcpy(CMSG_DATA(cmsg), fds, sizeof(int) * wire.nPlanes);
 
     QVector<int> alive;
+    bool needsShm = false;
     for (int clientFd : std::as_const(dmaBufClientFds_)) {
-        if (::sendmsg(clientFd, &msg, MSG_NOSIGNAL) >= 0) {
+        auto& pending = dmaBufPending_[clientFd];
+        struct Release { quint64 frameIndex; quint32 importFailed; quint32 reserved; } release {};
+        bool connected = true;
+        while (true) {
+            const auto n = ::recv(clientFd, &release, sizeof release, MSG_DONTWAIT);
+            if (n < 0 && (errno == EAGAIN || errno == EWOULDBLOCK || errno == EINTR)) break;
+            if (n != sizeof release) { connected = false; break; }
+            if (auto* held = pending.take(release.frameIndex)) gst_sample_unref(held);
+            if (release.importFailed) dmaBufDisabled_.insert(clientFd);
+        }
+        if (connected && dmaBufDisabled_.contains(clientFd)) {
+            needsShm = true;
+            alive.append(clientFd);
+            continue;
+        }
+        // Bound retained camera buffers; a stalled renderer must not exhaust the pool.
+        if (connected && pending.size() >= 2) {
+            alive.append(clientFd);
+            continue;
+        }
+        if (connected && ::sendmsg(clientFd, &msg, MSG_NOSIGNAL | MSG_DONTWAIT) == sizeof wire) {
+            pending.insert(wire.frameIndex, gst_sample_ref(sample));
+            alive.append(clientFd);
+        } else if (connected && (errno == EAGAIN || errno == EWOULDBLOCK)) {
             alive.append(clientFd);
         } else {
+            for (auto* held : std::as_const(pending)) gst_sample_unref(held);
+            dmaBufPending_.remove(clientFd);
+            dmaBufDisabled_.remove(clientFd);
             ::close(clientFd);
         }
     }
     dmaBufClientFds_ = alive;
-    for (int fd : fds) {
-        if (fd >= 0) {
-            ::close(fd);
-        }
-    }
     previewFrameIndex_ = wire.frameIndex;
-    return !dmaBufClientFds_.isEmpty();
+    return !dmaBufClientFds_.isEmpty() && !needsShm;
 #else
     Q_UNUSED(sample);
     Q_UNUSED(info);
@@ -563,6 +585,10 @@ void GStreamerCamera::stopDmaBufServer()
         ::close(fd);
     }
     dmaBufClientFds_.clear();
+    for (const auto& pending : std::as_const(dmaBufPending_))
+        for (auto* held : pending) gst_sample_unref(held);
+    dmaBufPending_.clear();
+    dmaBufDisabled_.clear();
     if (dmaBufServerFd_ >= 0) {
         ::close(dmaBufServerFd_);
         dmaBufServerFd_ = -1;
@@ -597,9 +623,9 @@ QString GStreamerCamera::sourcePipeline() const
     }
     if (config_.source == "avfoundation") {
         const int index = resolveAVFoundationDeviceIndex(config_.device);
-        const int w = config_.width > 0 ? config_.width : 1280;
-        const int h = config_.height > 0 ? config_.height : 720;
-        return QString("avfvideosrc device-index=%1 ! video/x-raw,width=%2,height=%3").arg(index).arg(w).arg(h);
+        // Capture caps are appended by pipelineDescription(). Two adjacent
+        // caps expressions are not a valid GStreamer pipeline.
+        return QString("avfvideosrc device-index=%1").arg(index);
     }
     if (config_.source == "dshow" || config_.source == "directshow") {
         const auto device = config_.device.isEmpty() ? "0" : config_.device;
@@ -637,50 +663,40 @@ QString GStreamerCamera::previewCapsDescription() const
 QString GStreamerCamera::pipelineDescription() const
 {
     const int aiFps = std::max(1, std::min(effectiveFps_, static_cast<int>(std::ceil(aiMaxFps_))));
-    QStringList sharedTransforms;
-    if (config_.flipHorizontal) {
-        sharedTransforms << "videoflip method=horizontal-flip";
-    }
-    if (config_.flipVertical) {
-        sharedTransforms << "videoflip method=vertical-flip";
-    }
-
-    QStringList aiTransforms = sharedTransforms;
-    aiTransforms << "videoconvert"
-                 << "videoscale"
-                 << "videorate"
-                 << QString("video/x-raw,format=RGB,width=%1,height=%1,framerate=%2/1")
-                        .arg(aiInputSize_)
-                        .arg(aiFps);
-
-    QStringList previewTransforms = sharedTransforms;
-    previewTransforms << "videoscale"
-                      << "videorate"
-                      << "videoconvert"
-                      << QString("%1,format=NV12").arg(previewCapsDescription());
-
     const int w = config_.width > 0 ? config_.width : 1280;
     const int h = config_.height > 0 ? config_.height : 720;
-    int cropLeft = 0;
-    int cropRight = 0;
-    int cropTop = 0;
-    int cropBottom = 0;
-    if (w > h) {
-        cropLeft = (w - h) / 2;
-        cropRight = (w - h) / 2;
-    } else if (h > w) {
-        cropTop = (h - w) / 2;
-        cropBottom = (h - w) / 2;
+    const int dx = std::max(0, w - h), dy = std::max(0, h - w);
+    QStringList transforms;
+    if (dx || dy) {
+        transforms << QString("videocrop left=%1 right=%2 top=%3 bottom=%4")
+            .arg(dx / 2).arg(dx - dx / 2).arg(dy / 2).arg(dy - dy / 2);
     }
+    if (config_.flipHorizontal) transforms << "videoflip method=horizontal-flip";
+    if (config_.flipVertical) transforms << "videoflip method=vertical-flip";
 
-    QString cropStr = QString("videocrop left=%1 right=%2 top=%3 bottom=%4").arg(cropLeft).arg(cropRight).arg(cropTop).arg(cropBottom);
-    QString normalizeStr = QString("videoconvert ! videoscale ! video/x-raw,width=%1,height=%2").arg(w).arg(h);
+    // Drop excess AI frames BEFORE crop, resize and RGB conversion.
+    QStringList aiTransforms{
+        "videorate drop-only=true",
+        QString("video/x-raw,framerate=%1/1").arg(aiFps),
+    };
+    aiTransforms << transforms;
+    aiTransforms << "videoscale"
+                 << QString("video/x-raw,width=%1,height=%1").arg(aiInputSize_)
+                 << "videoconvert"
+                 << "video/x-raw,format=RGB";
 
+    QStringList previewTransforms = transforms;
+    previewTransforms << "videoconvert"
+                      << QString("%1,format=NV12,colorimetry=bt601").arg(previewCapsDescription());
+    // Negotiate capture size directly. The previous pre-tee convert/scale and
+    // redundant preview scale copied full-resolution frames unnecessarily.
     return QString(
-        "%1 ! %2 ! %3 ! queue leaky=downstream max-size-buffers=2 ! identity name=frame_counter silent=true ! tee name=t "
-        "t. ! queue leaky=downstream max-size-buffers=1 ! %4 ! appsink name=ai_sink sync=false max-buffers=1 drop=true "
-        "t. ! queue leaky=downstream max-size-buffers=2 ! %5 ! appsink name=preview_sink sync=false max-buffers=1 drop=true")
-        .arg(sourcePipeline(), normalizeStr, cropStr, aiTransforms.join(" ! "), previewTransforms.join(" ! "));
+        "%1 ! video/x-raw,width=%2,height=%3,framerate=%4/1 ! "
+        "identity name=frame_counter silent=true ! tee name=t "
+        "t. ! queue leaky=downstream max-size-buffers=1 ! %5 ! appsink name=ai_sink sync=false max-buffers=1 drop=true "
+        "t. ! queue leaky=downstream max-size-buffers=1 ! %6 ! appsink name=preview_sink sync=false max-buffers=1 drop=true")
+        .arg(sourcePipeline()).arg(w).arg(h).arg(effectiveFps_)
+        .arg(aiTransforms.join(" ! ")).arg(previewTransforms.join(" ! "));
 }
 
 bool GStreamerCamera::ensurePreviewMapping(int width, int height, int yStride, int uvStride, qsizetype frameSize)

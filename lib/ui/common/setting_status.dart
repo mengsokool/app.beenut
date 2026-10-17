@@ -50,7 +50,7 @@ class StatusPill extends StatelessWidget {
       decoration: BoxDecoration(
         color: colors.bg,
         border: Border.all(color: colors.border),
-        borderRadius: BorderRadius.all(Radius.circular(4)),
+        borderRadius: BorderRadius.zero,
       ),
       child: Row(
         mainAxisSize: MainAxisSize.min,
@@ -63,7 +63,7 @@ class StatusPill extends StatelessWidget {
                 minHeight: 5,
                 color: colors.fg,
                 backgroundColor: colors.border,
-                borderRadius: BorderRadius.all(Radius.circular(4)),
+                borderRadius: BorderRadius.zero,
               ),
             ),
             const SizedBox(width: 6),
@@ -107,7 +107,7 @@ class StatusBadge extends StatelessWidget {
       padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
       decoration: BoxDecoration(
         color: Colors.black.withValues(alpha: 0.72),
-        borderRadius: BorderRadius.all(Radius.circular(4)),
+        borderRadius: BorderRadius.zero,
       ),
       child: Row(
         mainAxisSize: MainAxisSize.min,
@@ -148,7 +148,7 @@ class MetricChip extends StatelessWidget {
       padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 7),
       decoration: BoxDecoration(
         color: Colors.white.withValues(alpha: 0.1),
-        borderRadius: BorderRadius.all(Radius.circular(4)),
+        borderRadius: BorderRadius.zero,
       ),
       child: Text(
         '$label: $value',

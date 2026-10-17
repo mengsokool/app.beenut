@@ -59,6 +59,7 @@ To fully understand and navigate this repository, please start on this landing p
 *   🚀 **[Operations, Build, & Deployment](operations.md)**
     *   Build standard `.deb` Debian assets or full customized appliance OS images.
     *   Discover the one-command installer configuration lines, the `beenut-setup` helper, and system recovery procedures.
+*   **[Settings experience](settings_experience.md)**: task-based settings, the machine workspace, scoped saves, Carbon-style inputs, and onscreen keyboards.
 
 ---
 

@@ -16,6 +16,14 @@ cmake -DCMAKE_BUILD_TYPE=Release ..
 make -j$(nproc)
 ```
 
+For a Pi image with NCNN enabled, point CMake at an NCNN installation built for the target architecture:
+
+```bash
+cmake -DCMAKE_BUILD_TYPE=Release -DCMAKE_PREFIX_PATH=/opt/ncnn ..
+```
+
+Without that package, BeeNut still builds, but the NCNN option is reported as unavailable. `flutter-pi` builds must keep EGL/OpenGL, text input, and raw keyboard plugins enabled; the bridge installer fails when those capabilities are missing.
+
 The compiled binary (`beenutd`) is outputted to `service/build/src/beenutd`.
 
 ---

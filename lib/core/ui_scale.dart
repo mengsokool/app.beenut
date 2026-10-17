@@ -4,9 +4,26 @@ class UiScaleController {
   UiScaleController._();
 
   static final ValueNotifier<double> scale = ValueNotifier<double>(1.0);
+  static double _savedScale = 1.0;
+  static double? _previewScale;
 
   static void update(double value) {
-    final next = value.clamp(0.5, 2.0).toDouble();
+    _savedScale = value.clamp(0.5, 2.0).toDouble();
+    _publish();
+  }
+
+  static void preview(double value) {
+    _previewScale = value.clamp(0.5, 2.0).toDouble();
+    _publish();
+  }
+
+  static void clearPreview() {
+    _previewScale = null;
+    _publish();
+  }
+
+  static void _publish() {
+    final next = _previewScale ?? _savedScale;
     if ((scale.value - next).abs() < 0.001) return;
     scale.value = next;
   }
@@ -21,6 +38,16 @@ class UiScaleScope extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final clampedScale = scale.clamp(0.5, 2.0).toDouble();
+    // Root-level scaling changes the constraints seen by every responsive
+    // layout. On a phone this can turn an 853dp landscape screen into a
+    // 426dp compact layout. Mobile already honours the system text scale, so
+    // retain the real viewport for orientation-aware layouts.
+    final platform = Theme.of(context).platform;
+    final mobile =
+        platform == TargetPlatform.android || platform == TargetPlatform.iOS;
+    if (mobile && MediaQuery.sizeOf(context).shortestSide < 600) {
+      return child;
+    }
     return LayoutBuilder(
       builder: (context, constraints) {
         if (!constraints.hasBoundedWidth || !constraints.hasBoundedHeight) {

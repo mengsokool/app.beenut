@@ -3,6 +3,15 @@
 #include "counting_tracker.h"
 #include "hardware_discovery.h"
 #include "onnx_yolo_engine.h"
+#include "ncnn_yolo_engine.h"
+#include "engine_factory.h"
+#include "ncnn_decode.h"
+#include "gstreamer_camera.h"
+#include <QCoreApplication>
+#include <QTemporaryDir>
+#include <QThread>
+#include <QElapsedTimer>
+#include <cmath>
 
 #include <QJsonObject>
 #include <QFile>
@@ -99,6 +108,13 @@ void testLabelMatchesPartWithoutDomainHardcoding()
 void testModelInputSizeRoundTripsConfig()
 {
     const QJsonObject root{
+        {"counting", QJsonObject{
+            {"part_types", QJsonArray{QJsonObject{
+                {"id", "mixed"}, {"name", "Fasteners"},
+                {"keywords", QJsonArray{"washer_m6", "nut_m3"}},
+                {"class_names", QJsonObject{{"washer_m6", "Washer M6"}, {"nut_m3", "Nut M3"}}},
+            }}},
+        }},
         {"model", QJsonObject{
             {"input_size", 512},
         }},
@@ -118,6 +134,10 @@ void testModelInputSizeRoundTripsConfig()
     expect(config.ui.scale == 1.15, "ui scale should parse from config");
 
     const auto json = beenut::toJson(config);
+    const auto roundTripPart = beenut::parseConfig(json).counting.partTypes.first();
+    expect(roundTripPart.classNames.value("washer_m6").toString() == "Washer M6",
+           "operator class names should survive native config round-trip");
+    expect(roundTripPart.keywords.contains("nut_m3"), "aliases should preserve model class identifiers");
     const auto model = json.value("model").toObject();
     expect(model.value("input_size").toInt() == 512, "model input_size should round-trip to json");
     const auto gpio = json.value("gpio").toObject();
@@ -344,10 +364,139 @@ void testPoweroffCapabilityOverride()
     expect(capability.available, "executable poweroff override should be reported as available");
 }
 
+void testNcnnRuntimeAndSwitching()
+{
+    beenut::ModelConfig config;
+    config.engine = "ncnn";
+    config.modelPath = "/missing/yolo.param";
+    auto engine = beenut::createInferenceEngine(config);
+    expect(!engine->isReady(), "missing NCNN runtime/model must be an error");
+    expect(engine->detail().contains("NCNN"), "error should identify NCNN");
+    const std::vector<unsigned char> rgb(64 * 64 * 3, 128);
+    expect(engine->run(rgb.data(), 64, 64, "target").detections.isEmpty(),
+           "unavailable NCNN must never generate simulated detections");
+    if (!beenut::NcnnYoloEngine::runtimeAvailable())
+        expect(engine->detail().contains("not linked"), "missing runtime must explain build dependency");
+    config.engine = "mock";
+    expect(engine->reload(config), "switching from NCNN to mock should replace runtime");
+    expect(engine->run(rgb.data(), 64, 64, "target").count > 0, "explicit mock should work");
+    config.engine = "onnx";
+    expect(!engine->reload(config) && engine->detail().contains("ONNX"), "switching to ONNX should use ONNX engine");
+    config.engine = "ncnn";
+    expect(!engine->reload(config) && engine->detail().contains("NCNN"), "switching back should use NCNN engine");
+}
+
+void testNcnnConfigAndValidation()
+{
+    auto config = beenut::parseConfig(QJsonObject{{"model", QJsonObject{
+        {"engine", "ncnn"}, {"model_path", "/models/yolo.param"},
+        {"ncnn_bin_path", "/weights/custom.bin"}, {"ncnn_device", "gpu"}, {"ncnn_threads", 3},
+    }}});
+    auto model = beenut::toJson(config).value("model").toObject();
+    expect(model.value("ncnn_device").toString() == "gpu" && model.value("ncnn_threads").toInt() == 3,
+           "device and threads should survive native config round trip");
+    expect(beenut::NcnnYoloEngine::resolvedBinPath(config.model) == "/weights/custom.bin", "explicit weights path should win");
+    config.model.ncnnBinPath.clear();
+    expect(beenut::NcnnYoloEngine::resolvedBinPath(config.model) == "/models/yolo.bin", "param should resolve sibling weights");
+    auto caps = beenut::discoverCapabilities(config);
+    auto validation = beenut::validateConfig(config, caps);
+    if (!beenut::NcnnYoloEngine::gpuAvailable()) {
+        expect(validation.value("errors").toArray().contains("NCNN GPU requested but Vulkan compute is unavailable"),
+               "GPU selection must reject unavailable Vulkan");
+    }
+    config.model.ncnnThreads = 0;
+    expect(beenut::modelChanged(beenut::ModelConfig{}, config.model), "runtime tuning should reload the model");
+    validation = beenut::validateConfig(config, caps);
+    expect(validation.value("errors").toArray().contains("NCNN threads must be between 1 and 32"), "zero threads must be rejected");
+}
+
+void testNcnnOutputDecoding()
+{
+    beenut::ModelConfig config;
+    config.inputSize = 640;
+    const QStringList labels{"nut", "washer"};
+    const float e2e[] = {64,128,192,256,.9f,0, 320,320,384,448,.8f,1};
+    auto result = beenut::decodeNcnnYolo(e2e, 2, 6, config, labels, "mixed", {"nut", "washer"});
+    expect(result.count == 2 && result.detections[0].label == "nut", "YOLO26 should decode score/class in correct columns");
+    expect(std::abs(result.detections[0].x - .1) < .001, "coordinates must be relative to model input");
+    // Three overlapping boxes: same class suppresses; different class survives.
+    const float raw[] = {100,100,100, 100,100,100, 40,40,40, 40,40,40, .9f,.8f,.1f, .1f,.1f,.95f};
+    result = beenut::decodeNcnnYolo(raw, 6, 3, config, labels, "mixed", {"nut", "washer"});
+    expect(result.count == 2, "raw YOLO output needs class-aware NMS");
+    result = beenut::decodeNcnnYolo(raw, 6, 3, config, labels, "nut", {"nut"});
+    expect(result.count == 1, "selected target must filter decoded classes");
+    QString error;
+    beenut::decodeNcnnYolo(raw, 2, 3, config, labels, "nut", {}, &error);
+    expect(!error.isEmpty(), "unsupported tensor shape must surface an error");
+}
+
+void testNcnnLinkedInference()
+{
+    if (!beenut::NcnnYoloEngine::runtimeAvailable()) return;
+    QTemporaryDir dir;
+    QFile param(dir.filePath("fixture.param"));
+    expect(param.open(QIODevice::WriteOnly), "fixture param open");
+    param.write("7767517\n2 2\nInput input 0 1 in0\nMemoryData detection 0 1 out0 0=6 1=1\n"); param.close();
+    QFile weights(dir.filePath("fixture.bin"));
+    expect(weights.open(QIODevice::WriteOnly), "fixture weights open");
+    const float output[] = {64,64,128,128,.9f,0};
+    weights.write(reinterpret_cast<const char*>(output), sizeof output); weights.close();
+    QFile labels(dir.filePath("labels.txt"));
+    expect(labels.open(QIODevice::WriteOnly), "fixture labels open"); labels.write("nut\n"); labels.close();
+    beenut::ModelConfig config;
+    config.engine = "ncnn"; config.modelPath = param.fileName(); config.ncnnDevice = "cpu"; config.ncnnThreads = 1;
+    auto engine = beenut::createInferenceEngine(config);
+    expect(engine->isReady(), "linked NCNN must load a real param/bin network");
+    const std::vector<unsigned char> rgb(640 * 640 * 3, 128);
+    auto result = engine->run(rgb.data(), 640, 640, "nut", {"nut"});
+    expect(result.count == 1 && result.detections.first().label == "nut", "linked NCNN must execute and decode real output");
+    config.ncnnThreads = 2;
+    expect(engine->reload(config) && engine->detail().contains("2 threads"), "thread changes must reach NCNN options");
+    if (!beenut::NcnnYoloEngine::gpuAvailable()) {
+        config.ncnnDevice = "gpu";
+        expect(!engine->reload(config), "explicit GPU must not silently run on CPU");
+    }
+}
+
+void testCameraPipelineDropsBeforeConversion()
+{
+    beenut::CameraConfig config;
+    config.source = "mock"; config.width = 640; config.height = 480; config.fps = 30;
+    QTemporaryDir dir;
+    beenut::GStreamerCamera camera(config, dir.filePath("preview"), 320, 5);
+    const auto pipeline = camera.pipelineDescription();
+    expect(pipeline.indexOf("videorate drop-only=true") < pipeline.indexOf("videoscale"), "drop before expensive scaling");
+    expect(pipeline.count("videoconvert") == 2 && pipeline.count("videoscale") == 1, "remove redundant shared/preview conversions");
+    expect(camera.start(), "optimized pipeline must negotiate with a real GStreamer source");
+    GstSample* sample = nullptr;
+    QElapsedTimer timer; timer.start();
+    while (!sample && timer.elapsed() < 2000) { sample = camera.pullAiSample(); if (!sample) QThread::msleep(10); }
+    expect(sample != nullptr, "AI branch should emit frames");
+    GstVideoInfo info;
+    expect(gst_video_info_from_caps(&info, gst_sample_get_caps(sample)), "AI video metadata should parse");
+    expect(GST_VIDEO_INFO_WIDTH(&info) == 320 && GST_VIDEO_INFO_FORMAT(&info) == GST_VIDEO_FORMAT_RGB, "AI output must retain expected size and RGB format");
+    gst_sample_unref(sample);
+    camera.stop();
+
+    if (auto* factory = gst_element_factory_find("avfvideosrc")) {
+        gst_object_unref(factory);
+        config.source = "avfoundation";
+        config.device = "0";
+        beenut::GStreamerCamera macCamera(config, dir.filePath("mac-preview"), 320, 5);
+        GError* error = nullptr;
+        auto* parsed = gst_parse_launch(macCamera.pipelineDescription().toUtf8().constData(), &error);
+        expect(error == nullptr && parsed != nullptr, "macOS camera pipeline must parse without adjacent capture caps");
+        if (parsed) gst_object_unref(parsed);
+        if (error) g_error_free(error);
+    }
+}
+
 }  // namespace
 
-int main()
+int main(int argc, char** argv)
 {
+    QCoreApplication app(argc, argv);
+    gst_init(&argc, &argv);
     testCountingTrackerLocksMedianSample();
     testCountingTrackerUsesLowerMedianForEvenWindow();
     testLabelMatchesPartWithoutDomainHardcoding();
@@ -362,6 +511,11 @@ int main()
     testPoweroffCommandOverride();
     testPoweroffConfigOverride();
     testPoweroffCapabilityOverride();
+    testNcnnRuntimeAndSwitching();
+    testNcnnConfigAndValidation();
+    testNcnnOutputDecoding();
+    testNcnnLinkedInference();
+    testCameraPipelineDropsBeforeConversion();
     std::cout << "service_tests passed\n";
     return 0;
 }

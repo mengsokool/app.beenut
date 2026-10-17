@@ -30,56 +30,82 @@ class WorkbenchColors extends ThemeExtension<WorkbenchColors> {
   });
 
   static const light = WorkbenchColors(
-    action: Color(0xfff4a900),
-    actionHover: Color(0xffd98900),
-    actionActive: Color(0xffc47a00),
-    actionSoft: Color(0xfffff2cc),
-    actionText: Color(0xff8a4b00),
-    actionFocus: Color(0xffb76a00),
-    onAction: Color(0xff171717),
-    canvas: Color(0xfff3f4f6),
+    // Construction Yellow
+    action: Color(0xfff1c21b),
+    actionHover: Color(0xffd2a106),
+    actionActive: Color(0xff8e6a00),
+    actionSoft: Color(0xfffff4c2),
+    actionText: Color(0xff8e6a00),
+    actionFocus: Color(0xfff1c21b),
+    onAction: Color(0xff161616),
+
+    // Surfaces
+    canvas: Color(0xfff4f4f4),
     surface: Color(0xffffffff),
-    raised: Color(0xfff9fafb),
-    ink: Color(0xff171717),
-    muted: Color(0xff52525b),
-    disabled: Color(0xffa1a1aa),
-    line: Color(0xffd4d4d8),
-    lineSubtle: Color(0xffe4e4e7),
+    raised: Color(0xfff8f8f8),
+
+    // Text
+    ink: Color(0xff161616),
+    muted: Color(0xff525252),
+    disabled: Color(0xff8d8d8d),
+
+    // Borders
+    line: Color(0xff8d8d8d),
+    lineSubtle: Color(0xffe0e0e0),
+
+    // Status
     success: Color(0xff166534),
     successSoft: Color(0xffdcfce7),
-    warning: Color(0xff9a3412),
-    warningSoft: Color(0xffffedd5),
+
+    warning: Color(0xffb45309),
+    warningSoft: Color(0xfffff4c2),
+
     danger: Color(0xffb91c1c),
     dangerSoft: Color(0xfffee2e2),
-    info: Color(0xff1d4ed8),
-    infoSoft: Color(0xffdbeafe),
+
+    info: Color(0xff8e6a00),
+    infoSoft: Color(0xfffff4c2),
+
     previewBlack: Color(0xff09090b),
   );
 
   static const dark = WorkbenchColors(
-    action: Color(0xffffc23d),
-    actionHover: Color(0xffffd36a),
-    actionActive: Color(0xffe8a820),
-    actionSoft: Color(0xff3a2a00),
-    actionText: Color(0xffffd36a),
-    actionFocus: Color(0xffffc23d),
-    onAction: Color(0xff171717),
-    canvas: Color(0xff0f0f0f),
-    surface: Color(0xff18181b),
-    raised: Color(0xff27272a),
-    ink: Color(0xfffafafa),
-    muted: Color(0xffa1a1aa),
-    disabled: Color(0xff71717a),
-    line: Color(0xff3f3f46),
-    lineSubtle: Color(0xff303036),
+    // Construction Yellow
+    action: Color(0xfff1c21b),
+    actionHover: Color(0xffffd84d),
+    actionActive: Color(0xffd2a106),
+    actionSoft: Color(0xff3d3100),
+    actionText: Color(0xffffd84d),
+    actionFocus: Color(0xfff1c21b),
+    onAction: Color(0xff161616),
+
+    // Industrial Dark
+    canvas: Color(0xff161616),
+    surface: Color(0xff262626),
+    raised: Color(0xff393939),
+
+    // Text
+    ink: Color(0xfff4f4f4),
+    muted: Color(0xffc6c6c6),
+    disabled: Color(0xff8d8d8d),
+
+    // Borders
+    line: Color(0xff6f6f6f),
+    lineSubtle: Color(0xff525252),
+
+    // Status
     success: Color(0xff4ade80),
     successSoft: Color(0xff123d24),
-    warning: Color(0xfffb923c),
-    warningSoft: Color(0xff4a2412),
+
+    warning: Color(0xffffd84d),
+    warningSoft: Color(0xff493b00),
+
     danger: Color(0xfff87171),
     dangerSoft: Color(0xff4c1d1d),
-    info: Color(0xff60a5fa),
-    infoSoft: Color(0xff172f52),
+
+    info: Color(0xffffd84d),
+    infoSoft: Color(0xff3d3100),
+
     previewBlack: Color(0xff09090b),
   );
 
@@ -206,18 +232,18 @@ abstract final class WorkbenchSpace {
 }
 
 abstract final class WorkbenchRadius {
-  static const double indicator = 2;
-  static const double control = 4;
-  static const double panel = 6;
+  static const double indicator = 0;
+  static const double control = 0;
+  static const double panel = 0;
 }
 
 abstract final class WorkbenchMetric {
   static const double sidebarWidth = 236;
   static const double contentMaxWidth = 920;
   static const double technicianControlHeight = 36;
-  static const double technicianHitTarget = 40;
+  static const double technicianHitTarget = 48;
   static const double technicianRowMinHeight = 44;
-  static const double operatorControlHeight = 48;
+  static const double operatorControlHeight = 56;
   static const double operatorRowMinHeight = 56;
 }
 

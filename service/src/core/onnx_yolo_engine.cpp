@@ -1,5 +1,8 @@
 #include "onnx_yolo_engine.h"
 
+#ifdef ANDROID
+#include "qt_compat.h"
+#else
 #include <QElapsedTimer>
 #include <QFile>
 #include <QFileInfo>
@@ -9,6 +12,7 @@
 #include <QRegularExpression>
 #include <QThread>
 #include <QDebug>
+#endif
 
 #if defined(Q_OS_MAC) && defined(BEENUT_HAS_ONNXRUNTIME_COREML)
 #if __has_include(<onnxruntime/coreml_provider_factory.h>)
@@ -20,12 +24,21 @@
 #endif
 #endif
 
+#ifdef ANDROID
+extern "C" {
+OrtStatus* OrtSessionOptionsAppendExecutionProvider_Nnapi(OrtSessionOptions* options, uint32_t nnapi_flags);
+}
+#endif
+
 #include <array>
 #include <algorithm>
 #include <cmath>
 #include <numeric>
 #include <utility>
 #include <vector>
+#ifndef ANDROID
+#include <gst/video/video.h>
+#endif
 
 namespace {
 
@@ -53,6 +66,7 @@ float intersectionOverUnion(const Candidate& a, const Candidate& b)
     return denom <= 0.0F ? 0.0F : inter / denom;
 }
 
+#ifndef ANDROID
 QStringList labelsFromStructuredText(const QString& raw)
 {
     QStringList labels;
@@ -105,34 +119,158 @@ QStringList labelsFromMetadata(const Ort::Session& session)
     const auto metadata = session.GetModelMetadata();
     const QStringList preferredKeys = {"names", "labels", "classes", "class_names"};
     for (const auto& key : preferredKeys) {
-        auto value = metadata.LookupCustomMetadataMapAllocated(key.toUtf8().constData(), allocator);
-        if (value == nullptr) {
-            continue;
-        }
-        const auto labels = labelsFromStructuredText(QString::fromUtf8(value.get()));
-        if (!labels.isEmpty()) {
-            return labels;
+        try {
+            auto value = metadata.LookupCustomMetadataMapAllocated(key.toUtf8().constData(), allocator);
+            if (value != nullptr && value.get() != nullptr) {
+                const auto labels = labelsFromStructuredText(QString::fromUtf8(value.get()));
+                if (!labels.isEmpty()) {
+                    return labels;
+                }
+            }
+        } catch (...) {
         }
     }
     return {};
 }
+#else
+static QStringList labelsFromStructuredTextSimple(const std::string& raw)
+{
+    QStringList labels;
+    if (raw.empty()) return labels;
+
+    std::string item;
+    bool inQuote = false;
+    char quoteChar = 0;
+    const bool hasColon = raw.find(':') != std::string::npos;
+
+    for (size_t i = 0; i < raw.size(); ++i) {
+        char c = raw[i];
+        if (!inQuote) {
+            if (c == '\'' || c == '"') {
+                if (hasColon) {
+                    size_t j = i + 1;
+                    while (j < raw.size() && raw[j] != c) {
+                        if (raw[j] == '\\') j++;
+                        j++;
+                    }
+                    if (j < raw.size() && raw[j] == c) {
+                        size_t k = j + 1;
+                        while (k < raw.size() && std::isspace(static_cast<unsigned char>(raw[k]))) k++;
+                        if (k < raw.size() && raw[k] == ':') {
+                            i = k;
+                            continue;
+                        }
+                    }
+                }
+                inQuote = true;
+                quoteChar = c;
+                item.clear();
+            }
+        } else {
+            if (c == quoteChar) {
+                inQuote = false;
+                if (!item.empty()) {
+                    labels.append(QString(item));
+                }
+                item.clear();
+            } else if (c == '\\' && i + 1 < raw.size()) {
+                item += raw[++i];
+            } else {
+                item += c;
+            }
+        }
+    }
+
+    if (!labels.isEmpty()) {
+        return labels;
+    }
+
+    std::stringstream ss(raw);
+    std::string line;
+    while (std::getline(ss, line)) {
+        auto s = line;
+        s.erase(s.begin(), std::find_if(s.begin(), s.end(), [](unsigned char ch) { return !std::isspace(ch); }));
+        s.erase(std::find_if(s.rbegin(), s.rend(), [](unsigned char ch) { return !std::isspace(ch); }).base(), s.end());
+        if (s.empty()) continue;
+
+        auto colonPos = s.find(':');
+        if (colonPos != std::string::npos) {
+            std::string val = s.substr(colonPos + 1);
+            val.erase(val.begin(), std::find_if(val.begin(), val.end(), [](unsigned char ch) { return !std::isspace(ch); }));
+            val.erase(std::find_if(val.rbegin(), val.rend(), [](unsigned char ch) { return !std::isspace(ch); }).base(), val.end());
+            if (val.size() >= 2 && (val.front() == '\'' || val.front() == '"') && val.back() == val.front()) {
+                val = val.substr(1, val.size() - 2);
+            }
+            if (!val.empty()) {
+                labels.append(QString(val));
+            }
+        }
+    }
+
+    return labels;
+}
+
+QStringList labelsFromMetadata(const Ort::Session& session)
+{
+    try {
+        Ort::AllocatorWithDefaultOptions allocator;
+        const auto metadata = session.GetModelMetadata();
+        const char* preferredKeys[] = {"names", "labels", "classes", "class_names"};
+        for (const char* key : preferredKeys) {
+            try {
+                auto value = metadata.LookupCustomMetadataMapAllocated(key, allocator);
+                if (value != nullptr && value.get() != nullptr) {
+                    std::string raw(value.get());
+                    const auto labels = labelsFromStructuredTextSimple(raw);
+                    if (!labels.isEmpty()) {
+                        return labels;
+                    }
+                }
+            } catch (...) {
+            }
+        }
+    } catch (...) {
+    }
+    return {};
+}
+#endif
 
 }  // namespace
 
 namespace beenut {
 
+#ifdef ANDROID
+QString resolvedLabelsPath(const ModelConfig& model)
+{
+    if (model.labelsMode == "custom" && !model.labelsPath.isEmpty()) {
+        return model.labelsPath;
+    }
+    if (!model.labelsPath.trimmed().isEmpty()) {
+        return model.labelsPath;
+    }
+    const QFileInfo modelFile(model.modelPath);
+    if (!modelFile.fileName().isEmpty()) {
+        return modelFile.absolutePath() + "/labels.txt";
+    }
+    return {};
+}
+#endif
+
 bool labelMatchesPart(const QString& label, const QString& partType, const QStringList& keywords)
 {
+    const auto needle = partType.toLower().trimmed();
+    if (needle.isEmpty() || needle == "auto" || needle == "all" || needle == "*") {
+        return true;
+    }
     const auto haystack = label.toLower();
-    const auto needle = partType.toLower();
     for (const auto& keyword : keywords) {
         const auto mapped = keyword.toLower().trimmed();
+        if (mapped == "*" || mapped == "all" || mapped == "auto") {
+            return true;
+        }
         if (!mapped.isEmpty() && haystack.contains(mapped)) {
             return true;
         }
-    }
-    if (needle.isEmpty()) {
-        return true;
     }
     if (haystack.contains(needle)) {
         return true;
@@ -141,7 +279,7 @@ bool labelMatchesPart(const QString& label, const QString& partType, const QStri
 }
 
 OnnxYoloEngine::OnnxYoloEngine(ModelConfig config, QObject* parent)
-    : QObject(parent),
+    : IInferenceEngine(parent),
       config_(std::move(config)),
       env_(ORT_LOGGING_LEVEL_WARNING, "beenut"),
       sessionOptions_()
@@ -164,6 +302,9 @@ OnnxYoloEngine::OnnxYoloEngine(ModelConfig config, QObject* parent)
 #ifdef Q_OS_MAC
     intraThreads = std::min(intraThreads, 4);
 #endif
+#ifdef ANDROID
+    intraThreads = std::min(intraThreads, 2);
+#endif
 
     sessionOptions_.SetIntraOpNumThreads(intraThreads);
     sessionOptions_.SetGraphOptimizationLevel(GraphOptimizationLevel::ORT_ENABLE_ALL);
@@ -185,13 +326,32 @@ OnnxYoloEngine::OnnxYoloEngine(ModelConfig config, QObject* parent)
     }
 #elif defined(Q_OS_MAC)
     runtimeNotes_.append("CoreML provider unavailable: ONNX Runtime provider header not found");
+#elif defined(ANDROID)
+    {
+        uint32_t nnapi_flags = 0;
+        OrtStatus* status = OrtSessionOptionsAppendExecutionProvider_Nnapi(sessionOptions_, nnapi_flags);
+        if (status != nullptr) {
+            const auto message = QString::fromUtf8(Ort::GetApi().GetErrorMessage(status));
+            runtimeNotes_.append(QString("NNAPI unavailable: %1").arg(message));
+            Ort::GetApi().ReleaseStatus(status);
+        } else {
+            runtimeNotes_.append("NNAPI hardware acceleration enabled");
+        }
+    }
 #endif
 
     reload(config_);
 }
 
+OnnxYoloEngine::~OnnxYoloEngine()
+{
+    std::lock_guard<std::mutex> lock(engineMutex_);
+    session_.reset();
+}
+
 bool OnnxYoloEngine::reload(ModelConfig config)
 {
+    std::lock_guard<std::mutex> lock(engineMutex_);
     config_ = std::move(config);
     session_.reset();
     labels_.clear();
@@ -229,7 +389,19 @@ bool OnnxYoloEngine::reload(ModelConfig config)
         const std::wstring modelPath = config_.modelPath.toStdWString();
         session_ = std::make_unique<Ort::Session>(env_, modelPath.c_str(), sessionOptions_);
 #else
-        session_ = std::make_unique<Ort::Session>(env_, config_.modelPath.toUtf8().constData(), sessionOptions_);
+        try {
+            session_ = std::make_unique<Ort::Session>(env_, config_.modelPath.toUtf8().constData(), sessionOptions_);
+        } catch (const Ort::Exception& error) {
+#ifdef ANDROID
+            Ort::SessionOptions cpuOptions;
+            cpuOptions.SetIntraOpNumThreads(2);
+            cpuOptions.SetGraphOptimizationLevel(GraphOptimizationLevel::ORT_ENABLE_ALL);
+            session_ = std::make_unique<Ort::Session>(env_, config_.modelPath.toUtf8().constData(), cpuOptions);
+            runtimeNotes_.append(QString("Fallback to CPU execution: %1").arg(error.what()));
+#else
+            throw;
+#endif
+        }
 #endif
         Ort::AllocatorWithDefaultOptions allocator;
         inputName_ = session_->GetInputNameAllocated(0, allocator).get();
@@ -249,7 +421,7 @@ bool OnnxYoloEngine::reload(ModelConfig config)
         }
 
         QString labelSource;
-        if (config_.labelsMode == "auto") {
+        if (config_.labelsMode == "auto" || labels_.isEmpty()) {
             labels_ = labelsFromMetadata(*session_);
             if (!labels_.isEmpty()) {
                 labelSource = "ONNX metadata";
@@ -295,6 +467,7 @@ bool OnnxYoloEngine::isReady() const { return ready_; }
 QString OnnxYoloEngine::detail() const { return detail_; }
 QStringList OnnxYoloEngine::labels() const { return labels_; }
 
+#ifndef ANDROID
 InferenceResult OnnxYoloEngine::run(GstSample* sample, const QString& partType, const QStringList& keywords)
 {
     QElapsedTimer timer;
@@ -333,37 +506,104 @@ InferenceResult OnnxYoloEngine::run(GstSample* sample, const QString& partType, 
 
     auto* buffer = gst_sample_get_buffer(sample);
     auto* caps = gst_sample_get_caps(sample);
-    GstMapInfo map;
-    if (buffer == nullptr || caps == nullptr || !gst_buffer_map(buffer, &map, GST_MAP_READ)) {
-        result.processingMs = qMax(1, static_cast<int>(timer.elapsed()));
-        return result;
-    }
-
-    const auto* structure = gst_caps_get_structure(caps, 0);
-    int width = 640;
-    int height = 640;
-    gst_structure_get_int(structure, "width", &width);
-    gst_structure_get_int(structure, "height", &height);
+    GstVideoInfo info;
+    GstVideoFrame frame;
+    if (!buffer || !caps || !gst_video_info_from_caps(&info, caps) ||
+        GST_VIDEO_INFO_FORMAT(&info) != GST_VIDEO_FORMAT_RGB ||
+        !gst_video_frame_map(&frame, &info, buffer, GST_MAP_READ)) return result;
+    const int width = GST_VIDEO_FRAME_WIDTH(&frame), height = GST_VIDEO_FRAME_HEIGHT(&frame);
+    const int stride = GST_VIDEO_FRAME_PLANE_STRIDE(&frame, 0);
+    if (stride < width*3) { gst_video_frame_unmap(&frame); return result; }
 
     const size_t singleImageSize = static_cast<size_t>(3 * width * height);
     const size_t totalSize = singleImageSize * batchSize_;
     if (inputBuffer_.size() != totalSize) {
         inputBuffer_.resize(totalSize);
     }
-    const auto* src = static_cast<const unsigned char*>(map.data);
+    const auto* src = static_cast<const unsigned char*>(GST_VIDEO_FRAME_PLANE_DATA(&frame, 0));
     const size_t pixels = static_cast<size_t>(width * height);
-    for (size_t i = 0; i < pixels; ++i) {
-        inputBuffer_[i] = static_cast<float>(src[i * 3]) / 255.0F;
-        inputBuffer_[pixels + i] = static_cast<float>(src[i * 3 + 1]) / 255.0F;
-        inputBuffer_[pixels * 2 + i] = static_cast<float>(src[i * 3 + 2]) / 255.0F;
+    // Convert padded RGB rows directly into the reusable planar input tensor.
+    for (int y = 0; y < height; ++y) {
+        const auto* row = src + static_cast<size_t>(y)*stride;
+        const size_t base = static_cast<size_t>(y)*width;
+        for (int x = 0; x < width; ++x) {
+            const size_t i = base+x;
+            inputBuffer_[i] = static_cast<float>(row[x*3]) / 255.0F;
+            inputBuffer_[pixels+i] = static_cast<float>(row[x*3+1]) / 255.0F;
+            inputBuffer_[pixels*2+i] = static_cast<float>(row[x*3+2]) / 255.0F;
+        }
     }
     // Duplicate across other batches if batchSize_ > 1
     for (int64_t b = 1; b < batchSize_; ++b) {
         std::copy(inputBuffer_.begin(), inputBuffer_.begin() + singleImageSize,
                   inputBuffer_.begin() + b * singleImageSize);
     }
-    gst_buffer_unmap(buffer, &map);
+    gst_video_frame_unmap(&frame);
 
+    return runOnPreprocessedInput(width, height, partType, keywords, timer);
+}
+#endif
+
+InferenceResult OnnxYoloEngine::run(const unsigned char* rgbData, int width, int height, const QString& partType, const QStringList& keywords)
+{
+    std::lock_guard<std::mutex> lock(engineMutex_);
+    QElapsedTimer timer;
+    timer.start();
+
+    InferenceResult result;
+    if (config_.engine == "mock" && ready_) {
+        ++mockTick_;
+        const int count = 10;
+        const auto label = partType.isEmpty() ? labels_.value(0, "target") : partType;
+        result.count = count;
+        result.processingMs = 4;
+        result.detections.reserve(count);
+        const int columns = 4;
+        const int rows = (count + columns - 1) / columns;
+        for (int i = 0; i < count; ++i) {
+            const int col = i % columns;
+            const int row = i / columns;
+            const double jitter = ((mockTick_ + i) % 5) * 0.002;
+            result.detections.append({
+                .label = label,
+                .confidence = 0.86 + (i % 4) * 0.02,
+                .x = 0.14 + col * 0.18 + jitter,
+                .y = 0.18 + row * (0.58 / std::max(1, rows)) + jitter,
+                .w = 0.08,
+                .h = 0.08,
+            });
+        }
+        return result;
+    }
+
+    if (rgbData == nullptr || !ready_) {
+        result.processingMs = qMax(1, static_cast<int>(timer.elapsed()));
+        return result;
+    }
+
+    const size_t singleImageSize = static_cast<size_t>(3 * width * height);
+    const size_t totalSize = singleImageSize * batchSize_;
+    if (inputBuffer_.size() != totalSize) {
+        inputBuffer_.resize(totalSize);
+    }
+    const size_t pixels = static_cast<size_t>(width * height);
+    for (size_t i = 0; i < pixels; ++i) {
+        inputBuffer_[i] = static_cast<float>(rgbData[i * 3]) / 255.0F;
+        inputBuffer_[pixels + i] = static_cast<float>(rgbData[i * 3 + 1]) / 255.0F;
+        inputBuffer_[pixels * 2 + i] = static_cast<float>(rgbData[i * 3 + 2]) / 255.0F;
+    }
+    // Duplicate across other batches if batchSize_ > 1
+    for (int64_t b = 1; b < batchSize_; ++b) {
+        std::copy(inputBuffer_.begin(), inputBuffer_.begin() + singleImageSize,
+                  inputBuffer_.begin() + b * singleImageSize);
+    }
+
+    return runOnPreprocessedInput(width, height, partType, keywords, timer);
+}
+
+InferenceResult OnnxYoloEngine::runOnPreprocessedInput(int width, int height, const QString& partType, const QStringList& keywords, const QElapsedTimer& timer)
+{
+    InferenceResult result;
     const std::array<int64_t, 4> shape{batchSize_, 3, height, width};
     Ort::MemoryInfo memory = Ort::MemoryInfo::CreateCpu(OrtArenaAllocator, OrtMemTypeDefault);
     auto inputTensor = Ort::Value::CreateTensor<float>(memory, inputBuffer_.data(), inputBuffer_.size(), shape.data(), shape.size());
@@ -508,6 +748,7 @@ InferenceResult OnnxYoloEngine::run(GstSample* sample, const QString& partType, 
     return result;
 }
 
+#ifndef ANDROID
 void OnnxYoloEngine::runInference(void* sample, const QString& partType, const QStringList& keywords)
 {
     if (sample == nullptr) {
@@ -524,5 +765,6 @@ void OnnxYoloEngine::reloadEngine(beenut::ModelConfig config)
     const bool success = reload(std::move(config));
     emit statusChanged(success, detail_, labels_);
 }
+#endif
 
 }  // namespace beenut

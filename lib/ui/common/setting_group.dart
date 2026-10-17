@@ -1,6 +1,5 @@
 import 'package:flutter/material.dart';
 
-import '../../core/theme.dart';
 import '../../core/workbench_tokens.dart';
 
 class SettingsGroup extends StatefulWidget {
@@ -13,9 +12,11 @@ class SettingsGroup extends StatefulWidget {
     this.icon,
     this.collapsible = false,
     this.initiallyExpanded = true,
-  });
+    this.showHeader = true,
+  }) : assert(showHeader || !collapsible);
 
   final String title;
+  final bool showHeader;
   final List<Widget> children;
   final String? description;
   final String? summary;
@@ -51,17 +52,20 @@ class _SettingsGroupState extends State<SettingsGroup> {
         ? Duration.zero
         : const Duration(milliseconds: 160);
     final panelShape = RoundedRectangleBorder(
-      borderRadius: BeenutTheme.radiusPanel,
-      side: BorderSide(color: tokens.line),
+      borderRadius: BorderRadius.zero,
+      side: BorderSide(color: tokens.lineSubtle),
     );
-    final header = _SettingsGroupHeader(
-      title: widget.title,
-      description: widget.description,
-      summary: widget.summary,
-      icon: widget.icon,
-      collapsible: widget.collapsible,
-      expanded: _expanded,
-      animationDuration: animationDuration,
+    final header = ColoredBox(
+      color: tokens.raised,
+      child: _SettingsGroupHeader(
+        title: widget.title,
+        description: widget.description,
+        summary: widget.summary,
+        icon: widget.icon,
+        collapsible: widget.collapsible,
+        expanded: _expanded,
+        animationDuration: animationDuration,
+      ),
     );
 
     return Padding(
@@ -72,7 +76,7 @@ class _SettingsGroupState extends State<SettingsGroup> {
         clipBehavior: Clip.antiAlias,
         child: Column(
           children: [
-            if (widget.collapsible)
+            if (widget.showHeader && widget.collapsible)
               Semantics(
                 button: true,
                 expanded: _expanded,
@@ -81,10 +85,11 @@ class _SettingsGroupState extends State<SettingsGroup> {
                   child: header,
                 ),
               )
-            else
+            else if (widget.showHeader)
               header,
             if (!widget.collapsible || _expanded) ...[
-              Divider(height: 1, color: tokens.lineSubtle),
+              if (widget.showHeader)
+                Divider(height: 1, color: tokens.lineSubtle),
               _SettingsGroupChildren(children: widget.children),
             ],
           ],

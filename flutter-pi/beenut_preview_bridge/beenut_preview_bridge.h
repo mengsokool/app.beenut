@@ -4,7 +4,7 @@
 
 #define BEENUT_PREVIEW_CHANNEL "beenut/preview_texture"
 #define BEENUT_DMABUF_MAGIC 0x31464244u /* DBF1 */
-#define BEENUT_DMABUF_VERSION 1u
+#define BEENUT_DMABUF_VERSION 2u
 #define BEENUT_DMABUF_MAX_PLANES 4u
 
 struct beenut_dmabuf_frame {
@@ -20,3 +20,9 @@ struct beenut_dmabuf_frame {
     uint32_t strides[BEENUT_DMABUF_MAX_PLANES];
 };
 
+// The producer keeps the GstSample until the consumer releases the texture.
+struct beenut_dmabuf_release {
+    uint64_t frame_index;
+    uint32_t import_failed;
+    uint32_t reserved;
+};

@@ -68,6 +68,7 @@ To bypass TCP/Socket buffering boundaries without splitting JSON structures, the
 The client state machine (`/lib/core/service_client.dart`) handles config saves optimistically:
 *   **Instant Updates**: Adjusting parameters in the UI (like camera exposure or target part model) updates the local `_optimisticConfig` state instantly.
 *   **Save Debouncer**: A temporal timer ($220\text{ms}$) consolidates multiple sequential slider adjustments into a single IPC payload to minimize disk write cycles.
+*   **Ordered Saves**: Only one configuration save is in flight at a time because acknowledgements do not carry request IDs. Further live camera adjustments are coalesced and sent after acknowledgement. A missing acknowledgement after 10 seconds, or a disconnect, clears the queued save and reports an error so controls can retry.
 *   **Auto-Rollback**: If the daemon returns a JSON validation error, the frontend discards the pending config and rolls the UI back to the last confirmed server settings.
 
 ### C. OS-Level Socket Authentication
@@ -103,9 +104,9 @@ The desktop plugin (`/linux/runner/beenut_shm_texture.cc`) maps raw NV12/YUV vid
 *   `beenutd` writes raw frames directly to system shared memory registers.
 *   The GTK pixel texture manager polls and reads the shared memory segments directly without cross-process copying.
 
-### 3. Raspberry Pi (DRM/GBM): Direct DMA-BUF EGL Images
-The embedded kiosk profile implements ultimate optimization to maximize resource constraints on Single Board Computers (like Raspberry Pi 4/5):
-*   GStreamer captures frames directly into DMA-BUF GPU file handles.
-*   The custom `beenut_preview_bridge` hooks the file handles straight into GL textures via EGL:
+### 3. Raspberry Pi (DRM/GBM): DMA-BUF with NV12 fallback
+The embedded kiosk profile first attempts direct DMA-BUF EGL import:
+*   GStreamer captures frames into DMA-BUF GPU file handles.
+*   The custom `beenut_preview_bridge` imports the handles into GL textures via EGL. The producer retains each GstSample until Flutter releases the texture.
     $$\text{DMA-BUF fd} \longrightarrow \text{EGLImageKHR(EGL\_LINUX\_DMA\_BUF\_EXT)} \longrightarrow \text{GL Texture} \longrightarrow \text{Flutter Texture ID}$$
-*   This zero-copy pipeline maintains 60 FPS previews with negligible CPU overhead on embedded devices.
+*   If the driver cannot import DMA-BUF, the bridge falls back to packed NV12 shared memory and performs NV12-to-RGBA conversion on the GL thread. Dart and the daemon do not convert frames to RGBA.

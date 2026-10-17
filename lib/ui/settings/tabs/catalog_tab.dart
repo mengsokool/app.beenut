@@ -14,12 +14,14 @@ class PartCatalogEditor extends StatefulWidget {
     required this.modelLabels,
     required this.enabled,
     required this.onSave,
+    this.allowClassMapping = true,
   });
 
   final MachineConfig config;
   final List<String> modelLabels;
   final bool enabled;
   final ValueChanged<MachineConfig> onSave;
+  final bool allowClassMapping;
 
   @override
   State<PartCatalogEditor> createState() => _PartCatalogEditorState();
@@ -198,6 +200,7 @@ class _PartCatalogEditorState extends State<PartCatalogEditor> {
       barrierDismissible: true,
       builder: (context) => TargetEditDialog(
         part: part,
+        allowClassMapping: widget.allowClassMapping,
         modelLabels: widget.modelLabels,
         onSave: (updated) {
           setState(() {
@@ -210,7 +213,9 @@ class _PartCatalogEditorState extends State<PartCatalogEditor> {
           });
           _save();
         },
-        onDelete: isAddMode ? null : () => _removePart(part),
+        onDelete: isAddMode || !widget.allowClassMapping
+            ? null
+            : () => _removePart(part),
       ),
     );
   }
@@ -228,16 +233,18 @@ class _PartCatalogEditorState extends State<PartCatalogEditor> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          _TargetListToolbar(
-            countLabel: I18n.t(
-              context,
-              'targets_to_count',
-              args: {'count': parts.length.toString()},
+          if (widget.allowClassMapping)
+            _TargetListToolbar(
+              countLabel: I18n.t(
+                context,
+                'targets_to_count',
+                args: {'count': parts.length.toString()},
+              ),
+              addLabel: I18n.t(context, 'add_target'),
+              onAdd: widget.enabled ? _addPartManually : null,
             ),
-            addLabel: I18n.t(context, 'add_target'),
-            onAdd: widget.enabled ? _addPartManually : null,
-          ),
-          Divider(height: 1, color: tokens.lineSubtle),
+          if (widget.allowClassMapping)
+            Divider(height: 1, color: tokens.lineSubtle),
           if (parts.isEmpty)
             Padding(
               padding: const EdgeInsets.symmetric(
@@ -272,6 +279,7 @@ class _PartCatalogEditorState extends State<PartCatalogEditor> {
                   children: [
                     _TargetListRow(
                       part: part,
+                      showModelClasses: widget.allowClassMapping,
                       dragHandle: _TargetDragHandle(
                         index: index,
                         enabled: widget.enabled,
@@ -361,12 +369,14 @@ class _TargetListRow extends StatelessWidget {
   const _TargetListRow({
     required this.part,
     required this.dragHandle,
+    required this.showModelClasses,
     required this.onToggleEnabled,
     required this.onTap,
   });
 
   final PartType part;
   final Widget dragHandle;
+  final bool showModelClasses;
   final VoidCallback onToggleEnabled;
   final VoidCallback onTap;
 
@@ -408,15 +418,39 @@ class _TargetListRow extends StatelessWidget {
                             ),
                             const SizedBox(height: WorkbenchSpace.x1),
                             Text(
-                              part.keywords.isEmpty
-                                  ? I18n.t(context, 'target_no_model_classes')
-                                  : I18n.t(
-                                      context,
-                                      'target_model_classes',
-                                      args: {
-                                        'classes': part.keywords.join(', '),
-                                      },
-                                    ),
+                              showModelClasses
+                                  ? (part.keywords.isEmpty
+                                        ? I18n.t(
+                                            context,
+                                            'target_no_model_classes',
+                                          )
+                                        : I18n.t(
+                                            context,
+                                            'target_model_classes',
+                                            args: {
+                                              'classes': part.keywords.join(
+                                                ', ',
+                                              ),
+                                            },
+                                          ))
+                                  : [
+                                      for (
+                                        var i = 0;
+                                        i < part.keywords.length;
+                                        i++
+                                      )
+                                        part.classNames[part.keywords[i]]
+                                                    ?.trim()
+                                                    .isNotEmpty ==
+                                                true
+                                            ? part.classNames[part.keywords[i]]!
+                                                  .trim()
+                                            : I18n.t(
+                                                context,
+                                                'settings_item_name',
+                                                args: {'index': '${i + 1}'},
+                                              ),
+                                    ].join(' · '),
                               maxLines: 2,
                               overflow: TextOverflow.ellipsis,
                               style: Theme.of(context).textTheme.bodySmall

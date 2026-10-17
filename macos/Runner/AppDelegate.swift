@@ -31,8 +31,15 @@ class AppDelegate: FlutterAppDelegate {
       .appendingPathComponent("Contents/MacOS/beenutd")
       .path
     let copiedDaemonPath = (supportPath as NSString).appendingPathComponent("bin/beenutd")
-    killDaemonsMatching(daemonPath: bundledDaemonPath, configPath: configPath)
-    killDaemonsMatching(daemonPath: copiedDaemonPath, configPath: configPath)
+
+    // Send SIGTERM to both daemon types to trigger graceful shutdown simultaneously
+    sendSignalToDaemons(signal: "-TERM", paths: [bundledDaemonPath, copiedDaemonPath], configPath: configPath)
+
+    // Small grace period of 50ms to let them process SIGTERM
+    usleep(50_000)
+
+    // Force kill if they are still running
+    sendSignalToDaemons(signal: "-KILL", paths: [bundledDaemonPath, copiedDaemonPath], configPath: configPath)
 
     for path in [
       "/tmp/beenutd.sock",
@@ -43,11 +50,11 @@ class AppDelegate: FlutterAppDelegate {
     }
   }
 
-  private func killDaemonsMatching(daemonPath: String, configPath: String) {
-    let pattern = "\(NSRegularExpression.escapedPattern(for: daemonPath)).*--config \(NSRegularExpression.escapedPattern(for: configPath))"
-    runProcess("/usr/bin/pkill", arguments: ["-TERM", "-f", pattern])
-    usleep(500_000)
-    runProcess("/usr/bin/pkill", arguments: ["-KILL", "-f", pattern])
+  private func sendSignalToDaemons(signal: String, paths: [String], configPath: String) {
+    for daemonPath in paths {
+      let pattern = "\(NSRegularExpression.escapedPattern(for: daemonPath)).*--config \(NSRegularExpression.escapedPattern(for: configPath))"
+      runProcess("/usr/bin/pkill", arguments: [signal, "-f", pattern])
+    }
   }
 
   private func runProcess(_ executablePath: String, arguments: [String]) {

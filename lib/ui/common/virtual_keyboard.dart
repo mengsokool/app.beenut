@@ -7,9 +7,11 @@ class BeenutFullscreenKeyboard extends StatefulWidget {
     super.key,
     required this.initialText,
     required this.onSave,
+    this.label,
   });
 
   final String initialText;
+  final String? label;
   final ValueChanged<String> onSave;
 
   @override
@@ -21,6 +23,7 @@ class _BeenutFullscreenKeyboardState extends State<BeenutFullscreenKeyboard> {
   late TextEditingController _textController;
   bool _isThai = false;
   bool _isShifted = false;
+  bool _isSymbols = false;
 
   static final List<List<String>> _enKeys = [
     ['1', '2', '3', '4', '5', '6', '7', '8', '9', '0'],
@@ -37,7 +40,6 @@ class _BeenutFullscreenKeyboardState extends State<BeenutFullscreenKeyboard> {
   ];
 
   static final List<List<String>> _thNormal = [
-    ['1', '2', '3', '4', '5', '6', '7', '8', '9', '0'],
     ['ๅ', 'ภ', 'ถ', 'ุ', 'ึ', 'ค', 'ต', 'จ', 'ข', 'ช'],
     ['ๆ', 'ไ', 'ำ', 'พ', 'ะ', 'ั', 'ี', 'ร', 'น', 'ย', 'บ', 'ล'],
     ['ฟ', 'ห', 'ก', 'ด', 'เ', '้', '่', 'า', 'ส', 'ว', 'ง'],
@@ -45,7 +47,6 @@ class _BeenutFullscreenKeyboardState extends State<BeenutFullscreenKeyboard> {
   ];
 
   static final List<List<String>> _thShifted = [
-    ['!', '@', '#', '\$', '%', '^', '&', '*', '(', ')'],
     ['+', '๑', '๒', '๓', '๔', 'ู', '฿', '๕', '๖', '๗'],
     ['๏', 'ณ', 'ฯ', 'ญ', 'ฐ', 'ฅ', 'ฤ', 'ฆ', 'ฏ', 'โ'],
     ['ฌ', '็', '๋', 'ษ', 'ศ', 'ซ', 'ฉ', 'ฮ', 'ธ', '์'],
@@ -109,14 +110,20 @@ class _BeenutFullscreenKeyboardState extends State<BeenutFullscreenKeyboard> {
   @override
   Widget build(BuildContext context) {
     final scheme = Theme.of(context).colorScheme;
-    final rows = _isThai
+    final rows = _isSymbols
+        ? [
+            ['1', '2', '3', '4', '5', '6', '7', '8', '9', '0'],
+            ['.', '/', '\\', '-', '_', ':', '@', '#'],
+            ['(', ')', '+', '=', '?', '!', '%'],
+          ]
+        : _isThai
         ? (_isShifted ? _thShifted : _thNormal)
         : (_isShifted ? _enShiftedKeys : _enKeys);
 
     final screenHeight = MediaQuery.of(context).size.height;
     final isSmallScreen = screenHeight < 600;
 
-    final double keyHeight = isSmallScreen ? 34.0 : 48.0;
+    final double keyHeight = isSmallScreen ? 44.0 : 48.0;
     final double rowSpacing = isSmallScreen ? 3.0 : 6.0;
     final double previewPaddingVertical = isSmallScreen ? 6.0 : 12.0;
     final double previewFontSize = isSmallScreen ? 18.0 : 22.0;
@@ -124,7 +131,7 @@ class _BeenutFullscreenKeyboardState extends State<BeenutFullscreenKeyboard> {
     return Container(
       decoration: BoxDecoration(
         color: scheme.surfaceContainer,
-        borderRadius: BorderRadius.all(Radius.circular(4)),
+        borderRadius: BorderRadius.zero,
         boxShadow: [
           BoxShadow(
             color: scheme.shadow.withValues(alpha: 0.12),
@@ -140,172 +147,186 @@ class _BeenutFullscreenKeyboardState extends State<BeenutFullscreenKeyboard> {
         bottom:
             MediaQuery.of(context).viewInsets.bottom + (isSmallScreen ? 8 : 16),
       ),
-      child: Column(
-        mainAxisSize: MainAxisSize.min,
-        crossAxisAlignment: CrossAxisAlignment.stretch,
-        children: [
-          Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-            children: [
-              Text(
-                _isThai
-                    ? I18n.t(context, 'edit_target_name_th')
-                    : I18n.t(context, 'edit_target_name_en'),
-                style: TextStyle(
-                  fontSize: isSmallScreen ? 11 : 13,
-                  fontWeight: FontWeight.w600,
-                  color: BeenutTheme.inkColor(context),
-                ),
-              ),
-              IconButton(
-                icon: Icon(
-                  Icons.close,
-                  size: isSmallScreen ? 18 : 20,
-                  color: BeenutTheme.mutedColor(context),
-                ),
-                onPressed: () => Navigator.of(context).pop(),
-                constraints: BoxConstraints.tightFor(
-                  width: isSmallScreen ? 28 : 32,
-                  height: isSmallScreen ? 28 : 32,
-                ),
-                padding: EdgeInsets.zero,
-              ),
-            ],
-          ),
-          SizedBox(height: isSmallScreen ? 4 : 6),
-          Container(
-            padding: EdgeInsets.symmetric(
-              horizontal: 16,
-              vertical: previewPaddingVertical,
-            ),
-            decoration: BoxDecoration(
-              color: scheme.surfaceContainerLowest,
-              borderRadius: BorderRadius.all(Radius.circular(4)),
-              border: Border.all(color: scheme.outlineVariant, width: 1.5),
-            ),
-            child: Row(
+      child: SingleChildScrollView(
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
-                Expanded(
-                  child: SingleChildScrollView(
-                    scrollDirection: Axis.horizontal,
-                    reverse: true,
-                    child: Row(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        Text(
-                          _textController.text,
-                          style: TextStyle(
-                            fontSize: previewFontSize,
-                            fontWeight: FontWeight.w400,
-                            color: BeenutTheme.inkColor(context),
-                          ),
-                        ),
-                        const SizedBox(width: 2),
-                        _BlinkingCursor(height: previewFontSize),
-                      ],
-                    ),
+                Text(
+                  widget.label ??
+                      (_isThai
+                          ? I18n.t(context, 'edit_target_name_th')
+                          : I18n.t(context, 'edit_target_name_en')),
+                  style: TextStyle(
+                    fontSize: isSmallScreen ? 11 : 13,
+                    fontWeight: FontWeight.w600,
+                    color: BeenutTheme.inkColor(context),
                   ),
                 ),
-                if (_textController.text.isNotEmpty)
-                  IconButton(
-                    icon: Icon(
-                      Icons.clear,
-                      size: 20,
-                      color: BeenutTheme.mutedColor(context),
-                    ),
-                    onPressed: () {
-                      setState(() {
-                        _textController.clear();
-                      });
-                    },
-                    constraints: BoxConstraints.tightFor(
-                      width: isSmallScreen ? 28 : 32,
-                      height: isSmallScreen ? 28 : 32,
-                    ),
-                    padding: EdgeInsets.zero,
+                IconButton(
+                  icon: Icon(
+                    Icons.close,
+                    size: isSmallScreen ? 18 : 20,
+                    color: BeenutTheme.mutedColor(context),
                   ),
+                  onPressed: () => Navigator.of(context).pop(),
+                  constraints: BoxConstraints.tightFor(
+                    width: isSmallScreen ? 28 : 32,
+                    height: isSmallScreen ? 28 : 32,
+                  ),
+                  padding: EdgeInsets.zero,
+                ),
               ],
             ),
-          ),
-          SizedBox(height: isSmallScreen ? 6 : 12),
-          for (int i = 0; i < rows.length; i++) ...[
-            Row(
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: [
-                if ((_isThai && i == 4) || (!_isThai && i == 3)) ...[
+            SizedBox(height: isSmallScreen ? 4 : 6),
+            Container(
+              padding: EdgeInsets.symmetric(
+                horizontal: 16,
+                vertical: previewPaddingVertical,
+              ),
+              decoration: BoxDecoration(
+                color: scheme.surfaceContainerLowest,
+                borderRadius: BorderRadius.zero,
+                border: Border.all(color: scheme.outlineVariant, width: 1.5),
+              ),
+              child: Row(
+                children: [
                   Expanded(
-                    flex: 15,
-                    child: _buildSpecialKey(
-                      'Shift',
-                      isPressed: _isShifted,
-                      height: keyHeight,
-                      onTap: () {
+                    child: SingleChildScrollView(
+                      scrollDirection: Axis.horizontal,
+                      reverse: true,
+                      child: Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Text(
+                            _textController.text,
+                            style: TextStyle(
+                              fontSize: previewFontSize,
+                              fontWeight: FontWeight.w400,
+                              color: BeenutTheme.inkColor(context),
+                            ),
+                          ),
+                          const SizedBox(width: 2),
+                          _BlinkingCursor(height: previewFontSize),
+                        ],
+                      ),
+                    ),
+                  ),
+                  if (_textController.text.isNotEmpty)
+                    IconButton(
+                      icon: Icon(
+                        Icons.clear,
+                        size: 20,
+                        color: BeenutTheme.mutedColor(context),
+                      ),
+                      onPressed: () {
                         setState(() {
-                          _isShifted = !_isShifted;
+                          _textController.clear();
                         });
                       },
+                      constraints: BoxConstraints.tightFor(
+                        width: isSmallScreen ? 28 : 32,
+                        height: isSmallScreen ? 28 : 32,
+                      ),
+                      padding: EdgeInsets.zero,
                     ),
-                  ),
-                  const SizedBox(width: 3),
                 ],
-                for (final key in rows[i])
-                  Expanded(flex: 10, child: _buildKey(key, keyHeight)),
-                if ((_isThai && i == 4) || (!_isThai && i == 3)) ...[
-                  const SizedBox(width: 3),
-                  Expanded(
-                    flex: 15,
-                    child: _buildSpecialKey(
-                      I18n.t(context, 'delete_btn'),
-                      icon: Icons.backspace_outlined,
-                      height: keyHeight,
-                      onTap: _onBackspace,
+              ),
+            ),
+            SizedBox(height: isSmallScreen ? 6 : 12),
+            for (int i = 0; i < rows.length; i++) ...[
+              Row(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  if (!_isSymbols && i == rows.length - 1) ...[
+                    Expanded(
+                      flex: 15,
+                      child: _buildSpecialKey(
+                        'Shift',
+                        isPressed: _isShifted,
+                        height: keyHeight,
+                        onTap: () {
+                          setState(() {
+                            _isShifted = !_isShifted;
+                          });
+                        },
+                      ),
                     ),
-                  ),
+                    const SizedBox(width: 3),
+                  ],
+                  for (final key in rows[i])
+                    Expanded(flex: 10, child: _buildKey(key, keyHeight)),
+                  if ((_isSymbols && i == rows.length - 1) ||
+                      (!_isSymbols && i == rows.length - 1)) ...[
+                    const SizedBox(width: 3),
+                    Expanded(
+                      flex: 15,
+                      child: _buildSpecialKey(
+                        I18n.t(context, 'delete_btn'),
+                        icon: Icons.backspace_outlined,
+                        height: keyHeight,
+                        onTap: _onBackspace,
+                      ),
+                    ),
+                  ],
                 ],
+              ),
+              SizedBox(height: rowSpacing),
+            ],
+            Row(
+              children: [
+                Expanded(
+                  flex: 2,
+                  child: _buildSpecialKey(
+                    _isThai ? 'EN' : 'TH',
+                    height: keyHeight,
+                    onTap: () {
+                      setState(() {
+                        _isThai = !_isThai;
+                        _isSymbols = false;
+                      });
+                    },
+                  ),
+                ),
+                const SizedBox(width: 6),
+                Expanded(
+                  flex: 2,
+                  child: _buildSpecialKey(
+                    _isSymbols ? 'ABC' : '123 /',
+                    height: keyHeight,
+                    onTap: () => setState(() => _isSymbols = !_isSymbols),
+                  ),
+                ),
+                const SizedBox(width: 6),
+                Expanded(
+                  flex: 4,
+                  child: _buildSpecialKey(
+                    'Space',
+                    height: keyHeight,
+                    onTap: () => _onKeyPress(' '),
+                  ),
+                ),
+                const SizedBox(width: 6),
+                Expanded(
+                  flex: 2,
+                  child: _buildSpecialKey(
+                    I18n.t(context, 'save_btn'),
+                    color: scheme.primary,
+                    textColor: scheme.onPrimary,
+                    height: keyHeight,
+                    onTap: () {
+                      widget.onSave(_textController.text);
+                      Navigator.of(context).pop();
+                    },
+                  ),
+                ),
               ],
             ),
-            SizedBox(height: rowSpacing),
           ],
-          Row(
-            children: [
-              Expanded(
-                flex: 2,
-                child: _buildSpecialKey(
-                  _isThai ? 'EN' : 'TH',
-                  height: keyHeight,
-                  onTap: () {
-                    setState(() {
-                      _isThai = !_isThai;
-                    });
-                  },
-                ),
-              ),
-              const SizedBox(width: 6),
-              Expanded(
-                flex: 6,
-                child: _buildSpecialKey(
-                  'Space',
-                  height: keyHeight,
-                  onTap: () => _onKeyPress(' '),
-                ),
-              ),
-              const SizedBox(width: 6),
-              Expanded(
-                flex: 2,
-                child: _buildSpecialKey(
-                  I18n.t(context, 'save_btn'),
-                  color: scheme.primary,
-                  textColor: scheme.onPrimary,
-                  height: keyHeight,
-                  onTap: () {
-                    widget.onSave(_textController.text);
-                    Navigator.of(context).pop();
-                  },
-                ),
-              ),
-            ],
-          ),
-        ],
+        ),
       ),
     );
   }
@@ -319,7 +340,7 @@ class _BeenutFullscreenKeyboardState extends State<BeenutFullscreenKeyboard> {
         child: Material(
           color: scheme.surfaceContainerLowest,
           shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.all(Radius.circular(4)),
+            borderRadius: BorderRadius.zero,
             side: BorderSide(color: scheme.outlineVariant),
           ),
           child: InkWell(
@@ -331,7 +352,7 @@ class _BeenutFullscreenKeyboardState extends State<BeenutFullscreenKeyboard> {
                 });
               }
             },
-            borderRadius: BorderRadius.all(Radius.circular(4)),
+            borderRadius: BorderRadius.zero,
             child: Center(
               child: Text(
                 label,
@@ -366,10 +387,10 @@ class _BeenutFullscreenKeyboardState extends State<BeenutFullscreenKeyboard> {
             (isPressed
                 ? scheme.secondaryContainer
                 : scheme.surfaceContainerHighest),
-        borderRadius: BorderRadius.all(Radius.circular(4)),
+        borderRadius: BorderRadius.zero,
         child: InkWell(
           onTap: onTap,
-          borderRadius: BorderRadius.all(Radius.circular(4)),
+          borderRadius: BorderRadius.zero,
           child: Center(
             child: Row(
               mainAxisAlignment: MainAxisAlignment.center,
@@ -387,16 +408,20 @@ class _BeenutFullscreenKeyboardState extends State<BeenutFullscreenKeyboard> {
                   if (label.isNotEmpty) const SizedBox(width: 4),
                 ],
                 if (label.isNotEmpty)
-                  Text(
-                    label,
-                    style: TextStyle(
-                      fontSize: height < 40 ? 10 : 12,
-                      fontWeight: FontWeight.w500,
-                      color:
-                          textColor ??
-                          (isPressed
-                              ? scheme.onSecondaryContainer
-                              : scheme.onSurface),
+                  Flexible(
+                    child: Text(
+                      label,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: TextStyle(
+                        fontSize: height < 40 ? 10 : 12,
+                        fontWeight: FontWeight.w500,
+                        color:
+                            textColor ??
+                            (isPressed
+                                ? scheme.onSecondaryContainer
+                                : scheme.onSurface),
+                      ),
                     ),
                   ),
               ],

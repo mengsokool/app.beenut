@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 
 import '../../core/theme.dart';
+import 'settings_experience.dart';
 import '../../core/workbench_tokens.dart';
 
 class SettingIcon extends StatelessWidget {
@@ -40,13 +41,13 @@ class SelectorValue extends StatelessWidget {
     final tokens = context.workbenchColors;
     return SizedBox(
       width: 168,
-      height: WorkbenchMetric.technicianControlHeight,
+      height: SettingsExperience.controlHeight(context),
       child: OutlinedButton(
         onPressed: onPressed,
         style: OutlinedButton.styleFrom(
           alignment: Alignment.centerLeft,
           padding: const EdgeInsets.symmetric(horizontal: WorkbenchSpace.x3),
-          backgroundColor: tokens.surface,
+          backgroundColor: tokens.raised,
         ),
         child: Row(
           children: [
@@ -80,21 +81,23 @@ class StepperControl extends StatelessWidget {
     required this.enabled,
     required this.onDecrement,
     required this.onIncrement,
+    this.onEdit,
   });
 
   final String value;
   final bool enabled;
   final VoidCallback onDecrement;
   final VoidCallback onIncrement;
+  final VoidCallback? onEdit;
 
   @override
   Widget build(BuildContext context) {
     final tokens = context.workbenchColors;
     return Container(
-      height: WorkbenchMetric.technicianControlHeight,
+      height: SettingsExperience.controlHeight(context),
       decoration: BoxDecoration(
-        color: tokens.surface,
-        border: Border.all(color: tokens.line),
+        color: tokens.raised,
+        border: Border(bottom: BorderSide(color: tokens.line)),
         borderRadius: BeenutTheme.radiusSharp,
       ),
       child: Row(
@@ -106,16 +109,25 @@ class StepperControl extends StatelessWidget {
             onTap: onDecrement,
           ),
           Container(width: 1, height: 20, color: tokens.lineSubtle),
-          Container(
-            constraints: const BoxConstraints(minWidth: 56),
-            alignment: Alignment.center,
-            padding: const EdgeInsets.symmetric(horizontal: WorkbenchSpace.x2),
-            child: Text(
-              value,
-              style: BeenutTheme.dataTextStyle(context).copyWith(
-                fontSize: 12,
-                fontWeight: FontWeight.w500,
-                color: enabled ? tokens.ink : tokens.disabled,
+          Material(
+            color: Colors.transparent,
+            child: InkWell(
+              onTap: enabled ? onEdit : null,
+              child: Container(
+                constraints: const BoxConstraints(minWidth: 72),
+                alignment: Alignment.center,
+                padding: const EdgeInsets.symmetric(
+                  horizontal: WorkbenchSpace.x2,
+                ),
+                child: Text(
+                  value,
+                  style: BeenutTheme.dataTextStyle(context).copyWith(
+                    fontFamily: 'IBMPlexSans',
+                    fontSize: 18,
+                    fontWeight: FontWeight.w500,
+                    color: enabled ? tokens.ink : tokens.disabled,
+                  ),
+                ),
               ),
             ),
           ),
@@ -146,8 +158,8 @@ class _StepperButton extends StatelessWidget {
       child: InkWell(
         onTap: enabled ? onTap : null,
         child: SizedBox(
-          width: WorkbenchMetric.technicianControlHeight,
-          height: WorkbenchMetric.technicianControlHeight,
+          width: SettingsExperience.controlHeight(context),
+          height: SettingsExperience.controlHeight(context),
           child: Icon(
             icon,
             size: 14,

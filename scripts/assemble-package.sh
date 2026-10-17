@@ -165,10 +165,10 @@ if [[ -z "$FLUTTER_LINUX_BUNDLE_DIR" ]]; then
   done
 fi
 
-if [[ -n "$FLUTTER_PI_BUNDLE_DIR" && -d "$FLUTTER_PI_BUNDLE_DIR" && -f "$FLUTTER_PI_BUNDLE_DIR/kernel_blob.bin" ]]; then
+if [[ -n "$FLUTTER_PI_BUNDLE_DIR" && -d "$FLUTTER_PI_BUNDLE_DIR" && -f "$FLUTTER_PI_BUNDLE_DIR/app.so" ]]; then
   copy_dir "$FLUTTER_PI_BUNDLE_DIR" "$PACKAGE_ROOT/opt/beenut/flutter-pi"
 elif [[ "$KIOSK_MODE" == "flutter-pi" ]]; then
-  missing_artifact "flutter-pi asset bundle missing kernel_blob.bin: set FLUTTER_PI_BUNDLE_DIR"
+  missing_artifact "flutter-pi release bundle missing app.so: build with flutterpi_tool --release and set FLUTTER_PI_BUNDLE_DIR"
   mkdir -p "$PACKAGE_ROOT/opt/beenut/flutter-pi"
 else
   mkdir -p "$PACKAGE_ROOT/opt/beenut/flutter-pi"

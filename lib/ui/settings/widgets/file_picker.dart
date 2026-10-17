@@ -1,5 +1,6 @@
 import 'dart:io';
 import 'package:flutter/material.dart';
+import 'package:path_provider/path_provider.dart';
 import '../../../core/theme.dart';
 import '../../../core/i18n.dart';
 
@@ -22,10 +23,11 @@ class FilePickerDialog extends StatefulWidget {
 }
 
 class _FilePickerDialogState extends State<FilePickerDialog> {
-  late String currentPath;
+  String currentPath = '';
   List<FileSystemEntity> entries = [];
   String error = '';
   bool isLoading = false;
+  String? _androidAppDocsPath;
 
   late bool isGridView;
   String sortBy = 'name'; // 'name' | 'size' | 'date'
@@ -37,10 +39,21 @@ class _FilePickerDialogState extends State<FilePickerDialog> {
     _initPath();
   }
 
-  void _initPath() {
+  Future<void> _initPath() async {
     String path = widget.initialPath.trim();
+    if (Platform.isAndroid) {
+      try {
+        final dir = await getApplicationSupportDirectory();
+        _androidAppDocsPath = dir.path;
+      } catch (_) {}
+    }
+
     if (path.isEmpty) {
-      path = Platform.environment['HOME'] ?? '/';
+      if (Platform.isAndroid) {
+        path = _androidAppDocsPath ?? '/storage/emulated/0';
+      } else {
+        path = Platform.environment['HOME'] ?? '/';
+      }
     } else {
       // If it's a file, get its parent directory
       final file = File(path);
@@ -49,12 +62,19 @@ class _FilePickerDialogState extends State<FilePickerDialog> {
       } else {
         final dir = Directory(path);
         if (!dir.existsSync()) {
-          path = Platform.environment['HOME'] ?? '/';
+          if (Platform.isAndroid) {
+            path = _androidAppDocsPath ?? '/storage/emulated/0';
+          } else {
+            path = Platform.environment['HOME'] ?? '/';
+          }
         }
       }
     }
-    currentPath = path;
-    _loadPath(currentPath);
+    if (!mounted) return;
+    setState(() {
+      currentPath = path;
+    });
+    _loadPath(path);
   }
 
   void _loadPath(String path) {
@@ -141,6 +161,8 @@ class _FilePickerDialogState extends State<FilePickerDialog> {
   Set<String> _getAllowedSuffixes() {
     return switch (widget.pickerKind) {
       'model' => {'.onnx', '.hef'},
+      'ncnn_param' => {'.param'},
+      'ncnn_bin' => {'.bin'},
       'labels' => {'.txt', '.json', '.yaml', '.yml', '.names'},
       'image' => {'.png', '.jpg', '.jpeg', '.svg', '.webp', '.gif'},
       _ => {'.onnx', '.hef', '.txt', '.json'},
@@ -166,6 +188,22 @@ class _FilePickerDialogState extends State<FilePickerDialog> {
       final downloads = '$home/Downloads';
       if (Directory(downloads).existsSync()) {
         shortcuts.add({'label': 'Downloads', 'path': downloads});
+      }
+    }
+
+    // Android Specific Folders
+    if (Platform.isAndroid) {
+      final appDocs = _androidAppDocsPath;
+      if (appDocs != null) {
+        shortcuts.add({'label': 'App Files', 'path': appDocs});
+      }
+      final storage = '/storage/emulated/0';
+      if (Directory(storage).existsSync()) {
+        shortcuts.add({'label': 'Internal Storage', 'path': storage});
+        final downloads = '$storage/Download';
+        if (Directory(downloads).existsSync()) {
+          shortcuts.add({'label': 'Downloads', 'path': downloads});
+        }
       }
     }
 
@@ -295,8 +333,15 @@ class _FilePickerDialogState extends State<FilePickerDialog> {
     final targetPath = '${targetDir.path}/$fileName';
 
     await sourceFile.copy(targetPath);
-    if (kind == 'model') {
+    if (kind == 'model' || kind == 'ncnn_param') {
       await _copySiblingLabelsFile(sourceFile.parent, targetDir);
+      if (kind == 'ncnn_param' && fileName.endsWith('.param')) {
+        final binName = '${fileName.substring(0, fileName.length - 6)}.bin';
+        final weights = File('${sourceFile.parent.path}/$binName');
+        if (await weights.exists()) {
+          await weights.copy('${targetDir.path}/$binName');
+        }
+      }
     }
     return targetPath;
   }
@@ -448,7 +493,7 @@ class _FilePickerDialogState extends State<FilePickerDialog> {
                 height: 6,
                 child: LinearProgressIndicator(
                   minHeight: 6,
-                  borderRadius: BorderRadius.all(Radius.circular(4)),
+                  borderRadius: BorderRadius.zero,
                 ),
               ),
               SizedBox(width: 20),
@@ -500,7 +545,7 @@ class _FilePickerDialogState extends State<FilePickerDialog> {
           ),
           decoration: BoxDecoration(
             color: scheme.surfaceContainerLow,
-            borderRadius: BorderRadius.all(Radius.circular(4)),
+            borderRadius: BorderRadius.zero,
             boxShadow: [
               BoxShadow(
                 color: scheme.shadow.withValues(alpha: 0.15),
@@ -539,7 +584,7 @@ class _FilePickerDialogState extends State<FilePickerDialog> {
                         side: BorderSide(color: scheme.outlineVariant),
                         backgroundColor: scheme.surfaceContainerHighest,
                         shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.all(Radius.circular(4)),
+                          borderRadius: BorderRadius.zero,
                         ),
                       ),
                     ),
@@ -648,7 +693,7 @@ class _FilePickerDialogState extends State<FilePickerDialog> {
                           side: BorderSide(color: scheme.outlineVariant),
                           backgroundColor: scheme.surfaceContainerLowest,
                           shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.all(Radius.circular(4)),
+                            borderRadius: BorderRadius.zero,
                           ),
                         ),
                         child: Text(
@@ -778,7 +823,7 @@ class _FilePickerDialogState extends State<FilePickerDialog> {
                           height: 6,
                           child: LinearProgressIndicator(
                             minHeight: 6,
-                            borderRadius: BorderRadius.all(Radius.circular(4)),
+                            borderRadius: BorderRadius.zero,
                           ),
                         ),
                       )
@@ -826,9 +871,7 @@ class _FilePickerDialogState extends State<FilePickerDialog> {
                             elevation: 0,
                             color: scheme.surfaceContainerLow,
                             shape: RoundedRectangleBorder(
-                              borderRadius: BorderRadius.all(
-                                Radius.circular(4),
-                              ),
+                              borderRadius: BorderRadius.zero,
                               side: BorderSide(color: scheme.outlineVariant),
                             ),
                             clipBehavior: Clip.antiAlias,
@@ -917,7 +960,7 @@ class _FilePickerDialogState extends State<FilePickerDialog> {
 
                           return InkWell(
                             onTap: () => _handleEntryClick(entry),
-                            borderRadius: BorderRadius.all(Radius.circular(4)),
+                            borderRadius: BorderRadius.zero,
                             child: Padding(
                               padding: const EdgeInsets.symmetric(
                                 horizontal: 10,
@@ -973,9 +1016,7 @@ class _FilePickerDialogState extends State<FilePickerDialog> {
                                         border: Border.all(
                                           color: scheme.outlineVariant,
                                         ),
-                                        borderRadius: BorderRadius.all(
-                                          Radius.circular(4),
-                                        ),
+                                        borderRadius: BorderRadius.zero,
                                       ),
                                       child: Text(
                                         _formatSize(sizeBytes),

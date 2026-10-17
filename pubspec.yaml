@@ -35,6 +35,9 @@ dependencies:
     sdk: flutter
 
   cupertino_icons: ^1.0.8
+  camera: ^0.12.0+2
+  ffi: ^2.2.0
+  path_provider: ^2.1.6
 
 dev_dependencies:
   flutter_test:
@@ -62,15 +65,26 @@ flutter:
     - assets/images/logo.png
     - assets/images/Nut.png
     - assets/images/Washer.png
+    - assets/fonts/OFL-ibmplexsansthailooped.txt
+    - assets/fonts/OFL-ibmplexsans.txt
+    - assets/models/yolo26n.onnx
+    - assets/models/labels.txt
     - service/config/default.json
 
   fonts:
-    - family: NotoSansThai
+    - family: IBMPlexSansThaiLooped
       fonts:
-        - asset: assets/fonts/NotoSansThai.ttf
-    - family: NotoSans
+        - asset: assets/fonts/IBMPlexSansThaiLooped-Regular.ttf
+          weight: 400
+        - asset: assets/fonts/IBMPlexSansThaiLooped-Medium.ttf
+          weight: 500
+        - asset: assets/fonts/IBMPlexSansThaiLooped-SemiBold.ttf
+          weight: 600
+        - asset: assets/fonts/IBMPlexSansThaiLooped-Bold.ttf
+          weight: 700
+    - family: IBMPlexSans
       fonts:
-        - asset: assets/fonts/NotoSans.ttf
+        - asset: assets/fonts/IBMPlexSans.ttf
 
   # For details regarding adding assets from package dependencies, see
   # https://flutter.dev/to/asset-from-package

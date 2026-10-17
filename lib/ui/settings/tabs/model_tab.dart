@@ -5,7 +5,7 @@ import '../../../core/theme.dart';
 import '../../common/widgets.dart';
 import '../widgets/file_picker.dart';
 
-enum ModelSettingsSection { model, counting, service }
+enum ModelSettingsSection { model, detection, performance, counting, service }
 
 class ModelSettingsTab extends StatelessWidget {
   const ModelSettingsTab({
@@ -94,8 +94,14 @@ class ModelSettingsTab extends StatelessWidget {
                 options: [
                   runtimeOption(
                     'onnx',
-                    'ONNX',
+                    'ONNX Runtime',
                     I18n.t(context, 'run_onnx_general'),
+                    Icons.memory_outlined,
+                  ),
+                  runtimeOption(
+                    'ncnn',
+                    'NCNN',
+                    I18n.t(context, 'run_ncnn'),
                     Icons.memory_outlined,
                   ),
                   runtimeOption(
@@ -123,21 +129,52 @@ class ModelSettingsTab extends StatelessWidget {
             icon: Icons.folder_open_outlined,
             children: [
               PathSettingRow(
-                label: engine == 'hailo' ? 'Hailo HEF path' : 'ONNX model path',
+                label: engine == 'hailo'
+                    ? 'Hailo HEF path'
+                    : engine == 'ncnn'
+                    ? 'NCNN .param'
+                    : 'ONNX model path',
                 description: '',
                 value: modelPath,
+                onEdited: (path) => _update(
+                  engine == 'hailo'
+                      ? model.copyWith(hefPath: path)
+                      : model.copyWith(modelPath: path),
+                ),
                 buttonLabel: I18n.t(context, 'select_model_btn'),
                 enabled: enabled,
                 onBrowse: () {
-                  _openPicker(context, 'model', modelPath, (path) {
-                    if (engine == 'hailo') {
-                      _update(model.copyWith(hefPath: path));
-                    } else {
-                      _update(model.copyWith(modelPath: path));
-                    }
-                  });
+                  _openPicker(
+                    context,
+                    engine == 'ncnn' ? 'ncnn_param' : 'model',
+                    modelPath,
+                    (path) {
+                      if (engine == 'hailo') {
+                        _update(model.copyWith(hefPath: path));
+                      } else {
+                        _update(model.copyWith(modelPath: path));
+                      }
+                    },
+                  );
                 },
               ),
+              if (engine == 'ncnn') ...[
+                PathSettingRow(
+                  label: 'NCNN .bin',
+                  description: I18n.t(context, 'ncnn_bin_hint'),
+                  value: model.ncnnBinPath,
+                  onEdited: (path) =>
+                      _update(model.copyWith(ncnnBinPath: path)),
+                  buttonLabel: I18n.t(context, 'select_model_btn'),
+                  enabled: enabled,
+                  onBrowse: () => _openPicker(
+                    context,
+                    'ncnn_bin',
+                    model.ncnnBinPath,
+                    (path) => _update(model.copyWith(ncnnBinPath: path)),
+                  ),
+                ),
+              ],
               SelectSettingRow(
                 label: 'Labels',
                 description: '',
@@ -155,6 +192,9 @@ class ModelSettingsTab extends StatelessWidget {
                   label: 'Labels path',
                   description: '',
                   value: customLabelsPath,
+                  onEdited: (path) => _update(
+                    model.copyWith(labelsPath: path, labelsMode: 'custom'),
+                  ),
                   buttonLabel: I18n.t(context, 'select_labels_btn'),
                   enabled: enabled,
                   onBrowse: () {
@@ -179,13 +219,11 @@ class ModelSettingsTab extends StatelessWidget {
                 ),
             ],
           ),
-        if (section == ModelSettingsSection.model)
+        if (section == ModelSettingsSection.detection)
           SettingsGroup(
             title: I18n.t(context, 'model_tuning'),
             description: I18n.t(context, 'model_tuning_desc'),
             icon: Icons.tune_outlined,
-            collapsible: true,
-            initiallyExpanded: false,
             children: [
               DecimalStepperSettingRow(
                 label: 'Confidence',
@@ -207,6 +245,39 @@ class ModelSettingsTab extends StatelessWidget {
                 onChanged: (value) =>
                     _update(model.copyWith(nmsThreshold: value)),
               ),
+            ],
+          ),
+        if (section == ModelSettingsSection.performance)
+          SettingsGroup(
+            title: I18n.t(context, 'settings_inference'),
+            children: [
+              if (engine == 'ncnn') ...[
+                SelectSettingRow(
+                  label: I18n.t(context, 'ncnn_device'),
+                  description: runtimeById['ncnn']?['gpuAvailable'] == true
+                      ? ''
+                      : I18n.t(context, 'ncnn_gpu_unavailable'),
+                  options: const ['CPU', 'GPU (Vulkan)'],
+                  disabledOptions: runtimeById['ncnn']?['gpuAvailable'] == true
+                      ? const {}
+                      : const {'GPU (Vulkan)'},
+                  value: model.ncnnDevice == 'gpu' ? 'GPU (Vulkan)' : 'CPU',
+                  enabled: enabled,
+                  onSelected: (value) => _update(
+                    model.copyWith(ncnnDevice: value == 'CPU' ? 'cpu' : 'gpu'),
+                  ),
+                ),
+                StepperSettingRow(
+                  label: I18n.t(context, 'ncnn_threads'),
+                  description: '',
+                  value: model.ncnnThreads,
+                  min: 1,
+                  max: 32,
+                  enabled: enabled,
+                  onChanged: (value) =>
+                      _update(model.copyWith(ncnnThreads: value)),
+                ),
+              ],
               StepperSettingRow(
                 label: 'Max inference FPS',
                 description: '',
@@ -251,7 +322,7 @@ class ModelSettingsTab extends StatelessWidget {
                 description: '',
                 value: counting.timeoutMs,
                 unit: 'ms',
-                min: 500,
+                min: 100,
                 max: 20000,
                 step: 100,
                 enabled: enabled,
@@ -306,7 +377,9 @@ class _ModelLabelsPreviewRow extends StatelessWidget {
         : isUnavailable
         ? RowTone.warning
         : RowTone.neutral;
-    final source = mode == 'custom' ? 'custom file' : 'ONNX metadata';
+    final source = mode == 'custom'
+        ? 'custom file'
+        : I18n.t(context, 'loaded_model_source');
     final value = labels.isEmpty ? 'no classes' : '${labels.length} classes';
 
     return Container(
@@ -473,7 +546,7 @@ class _ClassChip extends StatelessWidget {
         border: Border.all(
           color: onTap == null ? scheme.outlineVariant : scheme.tertiary,
         ),
-        borderRadius: BorderRadius.all(Radius.circular(4)),
+        borderRadius: BorderRadius.zero,
       ),
       child: Text(
         label,
@@ -489,10 +562,6 @@ class _ClassChip extends StatelessWidget {
       ),
     );
     if (onTap == null) return chip;
-    return InkWell(
-      borderRadius: BorderRadius.all(Radius.circular(4)),
-      onTap: onTap,
-      child: chip,
-    );
+    return InkWell(borderRadius: BorderRadius.zero, onTap: onTap, child: chip);
   }
 }

@@ -1,9 +1,8 @@
+import 'dart:io';
 import 'package:flutter/material.dart';
+import '../../../core/dls_tokens.dart';
 import '../../../core/models.dart';
 import '../../../core/i18n.dart';
-import '../../../core/theme.dart';
-import '../../../core/workbench_tokens.dart';
-import '../../common/setting_controls.dart';
 import '../../common/virtual_keyboard.dart';
 import 'file_picker.dart';
 
@@ -14,12 +13,14 @@ class TargetEditDialog extends StatefulWidget {
     required this.modelLabels,
     required this.onSave,
     this.onDelete,
+    this.allowClassMapping = true,
   });
 
   final PartType part;
   final List<String> modelLabels;
   final ValueChanged<PartType> onSave;
   final VoidCallback? onDelete;
+  final bool allowClassMapping;
 
   @override
   State<TargetEditDialog> createState() => _TargetEditDialogState();
@@ -30,6 +31,10 @@ class _TargetEditDialogState extends State<TargetEditDialog> {
   late String imagePath;
   late List<String> keywords;
   late bool enabled;
+  final Map<String, TextEditingController> _classNameControllers = {};
+  final TextEditingController _classSearchController = TextEditingController();
+  bool _choosingClasses = false;
+  List<String> _chooserLabels = [];
 
   @override
   void initState() {
@@ -38,11 +43,24 @@ class _TargetEditDialogState extends State<TargetEditDialog> {
     imagePath = widget.part.image;
     keywords = List<String>.from(widget.part.keywords);
     enabled = widget.part.enabled;
+    for (final label in {
+      ...widget.modelLabels,
+      ...widget.part.keywords,
+      ...widget.part.classNames.keys,
+    }) {
+      _classNameControllers[label] = TextEditingController(
+        text: widget.part.classNames[label] ?? '',
+      );
+    }
   }
 
   @override
   void dispose() {
     _nameController.dispose();
+    _classSearchController.dispose();
+    for (final controller in _classNameControllers.values) {
+      controller.dispose();
+    }
     super.dispose();
   }
 
@@ -80,22 +98,33 @@ class _TargetEditDialogState extends State<TargetEditDialog> {
         image: imagePath.trim(),
         keywords: keywords,
         enabled: enabled,
+        classNames: {
+          for (final entry in _classNameControllers.entries)
+            if (entry.value.text.trim().isNotEmpty)
+              entry.key: entry.value.text.trim(),
+        },
       ),
     );
     Navigator.of(context).pop();
   }
 
-  void _showFullscreenKeyboard(BuildContext context) {
+  void _showFullscreenKeyboard(
+    BuildContext context, {
+    TextEditingController? controller,
+    required String label,
+  }) {
+    final target = controller ?? _nameController;
     showModalBottomSheet(
       context: context,
       isScrollControlled: true,
       backgroundColor: Colors.transparent,
       builder: (context) {
         return BeenutFullscreenKeyboard(
-          initialText: _nameController.text,
+          initialText: target.text,
+          label: label,
           onSave: (newText) {
             setState(() {
-              _nameController.text = newText;
+              target.text = newText;
             });
           },
         );
@@ -103,440 +132,426 @@ class _TargetEditDialogState extends State<TargetEditDialog> {
     );
   }
 
+  void _openClassChooser() {
+    FocusScope.of(context).unfocus();
+    _classSearchController.clear();
+    setState(() {
+      _chooserLabels = {...keywords, ...widget.modelLabels}.toList();
+      _choosingClasses = true;
+    });
+  }
+
+  void _closeClassChooser() {
+    FocusScope.of(context).unfocus();
+    setState(() => _choosingClasses = false);
+  }
+
   @override
   Widget build(BuildContext context) {
-    final scheme = Theme.of(context).colorScheme;
-    final tokens = context.workbenchColors;
-    return Center(
-      child: Material(
-        color: Colors.transparent,
-        child: Container(
-          width: 440,
+    final colors = context.dlsColors;
+    final media = MediaQuery.of(context);
+    return PopScope(
+      canPop: !_choosingClasses,
+      onPopInvokedWithResult: (didPop, _) {
+        if (!didPop && _choosingClasses) _closeClassChooser();
+      },
+      child: Dialog(
+        insetPadding: const EdgeInsets.all(16),
+        backgroundColor: colors.surface,
+        surfaceTintColor: Colors.transparent,
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.zero),
+        child: ConstrainedBox(
+          key: const ValueKey('target-edit-form'),
           constraints: BoxConstraints(
-            maxHeight: MediaQuery.of(context).size.height - 64,
-          ),
-          decoration: BoxDecoration(
-            color: tokens.surface,
-            borderRadius: BeenutTheme.radiusPanel,
-            boxShadow: [
-              BoxShadow(
-                color: Colors.black.withValues(alpha: 0.24),
-                blurRadius: 32,
-                offset: const Offset(0, 12),
-              ),
-            ],
-            border: Border.all(color: tokens.line),
+            maxWidth: 400,
+            maxHeight: (media.size.height - media.viewInsets.bottom - 32).clamp(
+              160.0,
+              640.0,
+            ),
           ),
           child: Column(
-            mainAxisSize: MainAxisSize.min,
+            mainAxisSize: _choosingClasses
+                ? MainAxisSize.max
+                : MainAxisSize.min,
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
-              // Header
               Padding(
-                padding: const EdgeInsets.symmetric(
-                  horizontal: 20,
-                  vertical: 16,
+                padding: EdgeInsets.fromLTRB(
+                  _choosingClasses ? 4 : 16,
+                  8,
+                  16,
+                  8,
                 ),
                 child: Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   children: [
-                    Text(
-                      'Edit Target',
-                      style: TextStyle(
-                        fontSize: 16,
-                        fontWeight: FontWeight.w600,
-                        color: scheme.onSurface,
+                    if (_choosingClasses)
+                      IconButton(
+                        tooltip: I18n.t(context, 'back_to_target'),
+                        onPressed: _closeClassChooser,
+                        icon: const Icon(Icons.arrow_back, size: 20),
+                        style: _iconStyle,
                       ),
-                    ),
-                    IconButton(
-                      onPressed: () => Navigator.of(context).pop(),
-                      icon: const Icon(Icons.close, size: 18),
-                      style: IconButton.styleFrom(
-                        padding: EdgeInsets.zero,
-                        minimumSize: const Size(32, 32),
-                        side: BorderSide(
-                          color: scheme.outlineVariant.withValues(alpha: 0.4),
+                    Expanded(
+                      child: Text(
+                        I18n.t(
+                          context,
+                          _choosingClasses
+                              ? 'choose_classes'
+                              : 'edit_target_title',
                         ),
-                        backgroundColor: tokens.raised,
-                        shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.all(Radius.circular(4)),
-                        ),
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-              Divider(height: 1, color: tokens.lineSubtle),
-
-              // Form content
-              Flexible(
-                child: ListView(
-                  shrinkWrap: true,
-                  physics: const ClampingScrollPhysics(),
-                  padding: const EdgeInsets.all(20),
-                  children: [
-                    // Target Name
-                    Text(
-                      'Name',
-                      style: TextStyle(
-                        fontSize: 13,
-                        fontWeight: FontWeight.w500,
-                        color: scheme.onSurface,
-                      ),
-                    ),
-                    const SizedBox(height: 8),
-                    Row(
-                      children: [
-                        Expanded(
-                          child: TextFormField(
-                            controller: _nameController,
-                            readOnly: false,
-                            showCursor: true,
-                            style: const TextStyle(fontSize: 13),
-                            decoration: InputDecoration(
-                              isDense: true,
-                              contentPadding: const EdgeInsets.symmetric(
-                                horizontal: 14,
-                                vertical: 12,
-                              ),
-                              hintText: I18n.t(context, 'enter_target_name'),
-                              filled: true,
-                              fillColor: tokens.raised,
-                              border: OutlineInputBorder(
-                                borderRadius: BorderRadius.all(
-                                  Radius.circular(4),
-                                ),
-                                borderSide: BorderSide(
-                                  color: scheme.outlineVariant.withValues(
-                                    alpha: 0.4,
-                                  ),
-                                ),
-                              ),
-                              enabledBorder: OutlineInputBorder(
-                                borderRadius: BorderRadius.all(
-                                  Radius.circular(4),
-                                ),
-                                borderSide: BorderSide(
-                                  color: scheme.outlineVariant.withValues(
-                                    alpha: 0.4,
-                                  ),
-                                ),
-                              ),
-                              focusedBorder: OutlineInputBorder(
-                                borderRadius: BorderRadius.all(
-                                  Radius.circular(4),
-                                ),
-                                borderSide: BorderSide(
-                                  color: scheme.primary,
-                                  width: 1.5,
-                                ),
-                              ),
-                            ),
-                          ),
-                        ),
-                        const SizedBox(width: 10),
-                        Tooltip(
-                          message: I18n.t(context, 'open_virtual_keyboard'),
-                          child: IconButton(
-                            icon: Icon(
-                              Icons.keyboard_outlined,
-                              size: 20,
-                              color: scheme.onSurface,
-                            ),
-                            onPressed: () => _showFullscreenKeyboard(context),
-                            style: IconButton.styleFrom(
-                              backgroundColor: tokens.raised,
-                              shape: RoundedRectangleBorder(
-                                borderRadius: BorderRadius.all(
-                                  Radius.circular(4),
-                                ),
-                              ),
-                              side: BorderSide(
-                                color: scheme.outlineVariant.withValues(
-                                  alpha: 0.4,
-                                ),
-                              ),
-                              minimumSize: const Size(40, 40),
-                              padding: EdgeInsets.zero,
-                            ),
-                          ),
-                        ),
-                      ],
-                    ),
-                    const SizedBox(height: 20),
-
-                    // Icon & Image Browse
-                    Text(
-                      'Icon & custom image',
-                      style: TextStyle(
-                        fontSize: 13,
-                        fontWeight: FontWeight.w500,
-                        color: scheme.onSurface,
-                      ),
-                    ),
-                    const SizedBox(height: 10),
-                    Row(
-                      children: [
-                        OutlinedButton.icon(
-                          onPressed: () => setState(() => imagePath = ''),
-                          style: OutlinedButton.styleFrom(
-                            backgroundColor: imagePath.trim().isEmpty
-                                ? tokens.actionSoft
-                                : tokens.surface,
-                            foregroundColor: imagePath.trim().isEmpty
-                                ? tokens.actionText
-                                : tokens.ink,
-                            side: BorderSide(
-                              color: imagePath.trim().isEmpty
-                                  ? tokens.action
-                                  : tokens.line,
-                            ),
-                            minimumSize: const Size(0, 36),
-                            padding: const EdgeInsets.symmetric(horizontal: 14),
-                            shape: RoundedRectangleBorder(
-                              borderRadius: BorderRadius.all(
-                                Radius.circular(4),
-                              ),
-                            ),
-                          ),
-                          icon: const Icon(Icons.hexagon_outlined, size: 16),
-                          label: Text(
-                            'Default icon',
-                            style: TextStyle(
-                              fontSize: 12,
-                              fontWeight: FontWeight.w500,
-                              color: imagePath.trim().isEmpty
-                                  ? tokens.actionText
-                                  : tokens.ink,
-                            ),
-                          ),
-                        ),
-                        const SizedBox(width: 10),
-                        OutlinedButton.icon(
-                          onPressed: _openImagePicker,
-                          style: OutlinedButton.styleFrom(
-                            backgroundColor: imagePath.trim().isNotEmpty
-                                ? tokens.actionSoft
-                                : tokens.surface,
-                            foregroundColor: imagePath.trim().isNotEmpty
-                                ? tokens.actionText
-                                : tokens.ink,
-                            side: BorderSide(
-                              color: imagePath.trim().isNotEmpty
-                                  ? tokens.action
-                                  : tokens.line,
-                            ),
-                            minimumSize: const Size(0, 36),
-                            padding: const EdgeInsets.symmetric(horizontal: 14),
-                            shape: RoundedRectangleBorder(
-                              borderRadius: BorderRadius.all(
-                                Radius.circular(4),
-                              ),
-                            ),
-                          ),
-                          icon: const Icon(Icons.image_outlined, size: 16),
-                          label: Text(
-                            'Custom image',
-                            style: TextStyle(
-                              fontSize: 12,
-                              fontWeight: FontWeight.w500,
-                              color: imagePath.trim().isNotEmpty
-                                  ? tokens.actionText
-                                  : tokens.ink,
-                            ),
-                          ),
-                        ),
-                      ],
-                    ),
-                    const SizedBox(height: 12),
-                    Row(
-                      children: [
-                        Expanded(
-                          child: Text(
-                            imagePath.trim().isEmpty
-                                ? 'Using default target icon'
-                                : imagePath,
-                            maxLines: 1,
-                            overflow: TextOverflow.ellipsis,
-                            style: TextStyle(
-                              fontSize: 11,
-                              color: scheme.onSurfaceVariant,
-                              fontFamily: 'monospace',
-                            ),
-                          ),
-                        ),
-                        const SizedBox(width: 12),
-                        OutlinedButton.icon(
-                          onPressed: _openImagePicker,
-                          icon: const Icon(
-                            Icons.folder_open_outlined,
-                            size: 14,
-                          ),
-                          label: Text(I18n.t(context, 'browse')),
-                          style: OutlinedButton.styleFrom(
-                            minimumSize: const Size(0, 32),
-                            padding: const EdgeInsets.symmetric(horizontal: 12),
-                            shape: RoundedRectangleBorder(
-                              borderRadius: BorderRadius.all(
-                                Radius.circular(4),
-                              ),
-                            ),
-                            textStyle: const TextStyle(
-                              fontFamily: BeenutTheme.fontFamily,
-                              fontFamilyFallback:
-                                  BeenutTheme.fontFamilyFallback,
-                              fontSize: 11,
-                              fontWeight: FontWeight.w500,
-                            ),
-                          ),
-                        ),
-                      ],
-                    ),
-                    const SizedBox(height: 22),
-
-                    // Map keywords
-                    Text(
-                      'Model classes to map',
-                      style: TextStyle(
-                        fontSize: 13,
-                        fontWeight: FontWeight.w500,
-                        color: scheme.onSurface,
-                      ),
-                    ),
-                    const SizedBox(height: 10),
-                    if (widget.modelLabels.isEmpty)
-                      Text(
-                        I18n.t(context, 'no_classes_in_model'),
                         style: TextStyle(
-                          fontSize: 12,
-                          color: scheme.onSurfaceVariant,
-                        ),
-                      )
-                    else
-                      Wrap(
-                        spacing: 8,
-                        runSpacing: 8,
-                        children: [
-                          for (final label in widget.modelLabels)
-                            FilterChip(
-                              label: Text(
-                                label,
-                                style: const TextStyle(fontSize: 12),
-                              ),
-                              selected: keywords.contains(label),
-                              onSelected: (_) => _toggleKeyword(label),
-                              showCheckmark: false,
-                              selectedColor: tokens.actionSoft,
-                              backgroundColor: tokens.raised,
-                              side: BorderSide(
-                                color: keywords.contains(label)
-                                    ? tokens.action
-                                    : tokens.line,
-                              ),
-                              shape: RoundedRectangleBorder(
-                                borderRadius: BorderRadius.all(
-                                  Radius.circular(4),
-                                ),
-                              ),
-                              padding: const EdgeInsets.symmetric(
-                                horizontal: 8,
-                                vertical: 4,
-                              ),
-                            ),
-                        ],
-                      ),
-                    const SizedBox(height: 22),
-
-                    // Enabled status
-                    Row(
-                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                      children: [
-                        Text(
-                          'Enabled',
-                          style: TextStyle(
-                            fontSize: 13,
-                            fontWeight: FontWeight.w500,
-                            color: scheme.onSurface,
-                          ),
-                        ),
-                        WorkbenchSwitch(
-                          value: enabled,
-                          onChanged: (val) => setState(() => enabled = val),
-                        ),
-                      ],
-                    ),
-                  ],
-                ),
-              ),
-              Divider(height: 1, color: tokens.lineSubtle),
-
-              // Footer actions
-              Padding(
-                padding: const EdgeInsets.all(16),
-                child: Row(
-                  children: [
-                    if (widget.onDelete != null) ...[
-                      TextButton.icon(
-                        onPressed: () {
-                          Navigator.of(context).pop();
-                          widget.onDelete!();
-                        },
-                        icon: const Icon(Icons.delete_outline, size: 16),
-                        label: Text(I18n.t(context, 'delete_this_target')),
-                        style: TextButton.styleFrom(
-                          foregroundColor: scheme.error,
-                          textStyle: const TextStyle(
-                            fontFamily: BeenutTheme.fontFamily,
-                            fontFamilyFallback: BeenutTheme.fontFamilyFallback,
-                            fontWeight: FontWeight.w500,
-                            fontSize: 12,
-                          ),
-                        ),
-                      ),
-                    ],
-                    const Spacer(),
-                    OutlinedButton(
-                      onPressed: () => Navigator.of(context).pop(),
-                      style: OutlinedButton.styleFrom(
-                        minimumSize: const Size(0, 36),
-                        padding: const EdgeInsets.symmetric(horizontal: 16),
-                        shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.all(Radius.circular(4)),
-                        ),
-                      ),
-                      child: Text(
-                        I18n.t(context, 'cancel'),
-                        style: const TextStyle(
-                          fontWeight: FontWeight.w500,
-                          fontSize: 12,
-                        ),
-                      ),
-                    ),
-                    const SizedBox(width: 8),
-                    FilledButton(
-                      onPressed: _save,
-                      style: FilledButton.styleFrom(
-                        minimumSize: const Size(0, 36),
-                        padding: const EdgeInsets.symmetric(horizontal: 16),
-                        shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.all(Radius.circular(4)),
-                        ),
-                      ),
-                      child: Text(
-                        I18n.t(context, 'save_btn'),
-                        style: const TextStyle(
-                          fontWeight: FontWeight.w500,
-                          fontSize: 12,
+                          color: colors.inkPrimary,
+                          fontSize: 17,
+                          fontWeight: FontWeight.w600,
                         ),
                       ),
                     ),
                   ],
                 ),
               ),
+              if (_choosingClasses)
+                Expanded(child: _classChooser())
+              else
+                Flexible(
+                  child: SingleChildScrollView(
+                    key: const ValueKey('target-details-scroll'),
+                    padding: const EdgeInsets.all(16),
+                    child: _details(),
+                  ),
+                ),
+              Divider(height: 1, color: colors.borderSubtle),
+              _footer(),
             ],
           ),
         ),
       ),
     );
+  }
+
+  ButtonStyle get _iconStyle => IconButton.styleFrom(
+    minimumSize: const Size.square(48),
+    backgroundColor: Colors.transparent,
+  );
+
+  Widget _keyboardButton(TextEditingController controller, String label) =>
+      IconButton(
+        tooltip: I18n.t(context, 'open_virtual_keyboard'),
+        onPressed: () => _showFullscreenKeyboard(
+          context,
+          controller: controller,
+          label: label,
+        ),
+        icon: const Icon(Icons.keyboard_outlined, size: 20),
+        style: _iconStyle,
+      );
+
+  InputDecoration _fieldDecoration({
+    String? label,
+    String? hint,
+    Widget? suffix,
+  }) => InputDecoration(
+    labelText: label,
+    hintText: hint,
+    filled: true,
+    border: const UnderlineInputBorder(),
+    contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 14),
+    suffixIcon: suffix,
+  );
+
+  Widget _details() {
+    final colors = context.dlsColors;
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        TextField(
+          key: const ValueKey('target-name'),
+          controller: _nameController,
+          onChanged: (_) => setState(() {}),
+          style: const TextStyle(fontSize: 16),
+          decoration: _fieldDecoration(
+            label: I18n.t(context, 'target_name'),
+            suffix: _keyboardButton(
+              _nameController,
+              I18n.t(context, 'target_name'),
+            ),
+          ),
+        ),
+        const SizedBox(height: 12),
+        Row(
+          children: [
+            SizedBox(width: 40, height: 40, child: _imagePreview()),
+            const SizedBox(width: 12),
+            Expanded(
+              child: OutlinedButton.icon(
+                style: OutlinedButton.styleFrom(
+                  minimumSize: const Size(72, 48),
+                ),
+                onPressed: _openImagePicker,
+                icon: const Icon(Icons.image_outlined, size: 20),
+                label: Text(I18n.t(context, 'choose_target_image')),
+              ),
+            ),
+            if (imagePath.isNotEmpty)
+              IconButton(
+                tooltip: I18n.t(context, 'remove_target_image'),
+                onPressed: () => setState(() => imagePath = ''),
+                icon: const Icon(Icons.close, size: 20),
+                style: _iconStyle,
+              ),
+          ],
+        ),
+        const SizedBox(height: 12),
+        Row(
+          children: [
+            Expanded(
+              child: Text(
+                I18n.t(context, 'counted_objects'),
+                style: TextStyle(
+                  color: colors.inkPrimary,
+                  fontSize: 15,
+                  fontWeight: FontWeight.w600,
+                ),
+              ),
+            ),
+            if (widget.allowClassMapping)
+              OutlinedButton.icon(
+                key: const ValueKey('add-class'),
+                onPressed: widget.modelLabels.isEmpty
+                    ? null
+                    : _openClassChooser,
+                style: OutlinedButton.styleFrom(
+                  minimumSize: const Size(72, 48),
+                ),
+                icon: const Icon(Icons.add, size: 18),
+                label: Text(I18n.t(context, 'add_class')),
+              ),
+          ],
+        ),
+        if (keywords.isEmpty)
+          Padding(
+            padding: const EdgeInsets.symmetric(vertical: 8),
+            child: Text(
+              I18n.t(
+                context,
+                widget.modelLabels.isEmpty
+                    ? 'no_classes_in_model'
+                    : 'select_classes_prompt',
+              ),
+              style: TextStyle(color: colors.inkSecondary, fontSize: 14),
+            ),
+          )
+        else ...[
+          Text(
+            I18n.t(context, 'operator_names_hint'),
+            style: TextStyle(color: colors.inkSecondary, fontSize: 13),
+          ),
+          for (final label in keywords)
+            Padding(
+              padding: const EdgeInsets.only(top: 16),
+              child: Row(
+                children: [
+                  Expanded(
+                    child: TextField(
+                      key: ValueKey('class-name-$label'),
+                      controller: _classNameControllers[label],
+                      style: const TextStyle(fontSize: 15),
+                      decoration: _fieldDecoration(
+                        label: widget.allowClassMapping
+                            ? label
+                            : I18n.t(
+                                context,
+                                'settings_item_name',
+                                args: {
+                                  'index': '${keywords.indexOf(label) + 1}',
+                                },
+                              ),
+                        hint: I18n.t(context, 'operator_class_name'),
+                        suffix: _keyboardButton(
+                          _classNameControllers[label]!,
+                          widget.allowClassMapping
+                              ? '${I18n.t(context, 'operator_class_name')} · $label'
+                              : I18n.t(context, 'operator_class_name'),
+                        ),
+                      ),
+                    ),
+                  ),
+                  if (widget.allowClassMapping) const SizedBox(width: 4),
+                  if (widget.allowClassMapping)
+                    IconButton(
+                      key: ValueKey('remove-class-$label'),
+                      tooltip: I18n.t(context, 'remove_class'),
+                      onPressed: () => _toggleKeyword(label),
+                      icon: Icon(
+                        Icons.close,
+                        size: 20,
+                        color: colors.inkSecondary,
+                      ),
+                      style: _iconStyle,
+                    ),
+                ],
+              ),
+            ),
+        ],
+        const SizedBox(height: 12),
+        SwitchListTile(
+          contentPadding: EdgeInsets.zero,
+          title: Text(
+            I18n.t(context, 'target_enabled'),
+            style: const TextStyle(fontSize: 15),
+          ),
+          value: enabled,
+          onChanged: (value) => setState(() => enabled = value),
+        ),
+      ],
+    );
+  }
+
+  Widget _classChooser() {
+    final colors = context.dlsColors;
+    final query = _classSearchController.text.trim().toLowerCase();
+    final filtered = _chooserLabels
+        .where(
+          (label) =>
+              label.toLowerCase().contains(query) ||
+              (_classNameControllers[label]?.text ?? '').toLowerCase().contains(
+                query,
+              ),
+        )
+        .toList();
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        Padding(
+          padding: const EdgeInsets.fromLTRB(16, 0, 16, 8),
+          child: TextField(
+            key: const ValueKey('class-search'),
+            controller: _classSearchController,
+            onChanged: (_) => setState(() {}),
+            style: const TextStyle(fontSize: 15),
+            decoration: _fieldDecoration(
+              hint: I18n.t(context, 'search_classes'),
+              suffix: _keyboardButton(
+                _classSearchController,
+                I18n.t(context, 'search_classes'),
+              ),
+            ),
+          ),
+        ),
+        Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+          child: Text(
+            I18n.t(
+              context,
+              'selected_classes_count',
+              args: {'count': '${keywords.length}'},
+            ),
+            style: TextStyle(color: colors.inkSecondary, fontSize: 13),
+          ),
+        ),
+        Divider(height: 1, color: colors.borderSubtle),
+        Expanded(
+          child: filtered.isEmpty
+              ? Center(
+                  child: Text(
+                    I18n.t(context, 'no_matching_classes'),
+                    style: TextStyle(color: colors.inkSecondary),
+                  ),
+                )
+              : ListView.builder(
+                  key: const ValueKey('class-chooser-list'),
+                  itemCount: filtered.length,
+                  itemBuilder: (context, index) {
+                    final label = filtered[index];
+                    final alias =
+                        _classNameControllers[label]?.text.trim() ?? '';
+                    return CheckboxListTile(
+                      key: ValueKey('choose-class-$label'),
+                      value: keywords.contains(label),
+                      onChanged: (_) => _toggleKeyword(label),
+                      controlAffinity: ListTileControlAffinity.leading,
+                      contentPadding: const EdgeInsets.symmetric(
+                        horizontal: 12,
+                        vertical: 4,
+                      ),
+                      title: Text(
+                        alias.isEmpty ? label : alias,
+                        style: const TextStyle(fontSize: 15),
+                      ),
+                      subtitle: alias.isEmpty
+                          ? null
+                          : Text(
+                              label,
+                              style: TextStyle(
+                                fontSize: 12,
+                                color: colors.inkSecondary,
+                              ),
+                            ),
+                    );
+                  },
+                ),
+        ),
+      ],
+    );
+  }
+
+  Widget _footer() {
+    final colors = context.dlsColors;
+    return Padding(
+      padding: const EdgeInsets.all(8),
+      child: Row(
+        children: [
+          if (!_choosingClasses && widget.onDelete != null)
+            IconButton(
+              tooltip: I18n.t(context, 'delete_this_target'),
+              onPressed: () {
+                Navigator.of(context).pop();
+                widget.onDelete!();
+              },
+              icon: Icon(Icons.delete_outline, color: colors.danger, size: 20),
+              style: _iconStyle,
+            ),
+          const Spacer(),
+          if (!_choosingClasses) ...[
+            TextButton(
+              style: TextButton.styleFrom(minimumSize: const Size(72, 48)),
+              onPressed: () => Navigator.of(context).pop(),
+              child: Text(I18n.t(context, 'cancel')),
+            ),
+            const SizedBox(width: 8),
+          ],
+          FilledButton(
+            key: ValueKey(_choosingClasses ? 'classes-done' : 'target-save'),
+            style: FilledButton.styleFrom(minimumSize: const Size(80, 48)),
+            onPressed: _choosingClasses
+                ? _closeClassChooser
+                : (_nameController.text.trim().isEmpty ? null : _save),
+            child: Text(
+              I18n.t(context, _choosingClasses ? 'done_selecting' : 'save_btn'),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _imagePreview() {
+    Widget fallback() => Icon(
+      Icons.hexagon_outlined,
+      color: context.dlsColors.inkSecondary,
+      size: 30,
+    );
+    if (imagePath.isEmpty) return fallback();
+    return imagePath.startsWith('assets/')
+        ? Image.asset(
+            imagePath,
+            fit: BoxFit.contain,
+            errorBuilder: (_, _, _) => fallback(),
+          )
+        : Image.file(
+            File(imagePath),
+            fit: BoxFit.contain,
+            errorBuilder: (_, _, _) => fallback(),
+          );
   }
 }

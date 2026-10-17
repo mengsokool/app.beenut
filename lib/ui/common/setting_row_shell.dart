@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 
 import '../../core/workbench_tokens.dart';
+import 'settings_experience.dart';
 
 class SettingRowShell extends StatelessWidget {
   const SettingRowShell({
@@ -31,7 +32,8 @@ class SettingRowShell extends StatelessWidget {
         ),
         child: LayoutBuilder(
           builder: (context, constraints) {
-            final stackControl = constraints.maxWidth < 520;
+            final stackControl =
+                constraints.maxWidth < 520 || supporting != null;
             final information = _SettingRowInformation(
               leading: leading,
               label: label,
@@ -44,7 +46,7 @@ class SettingRowShell extends StatelessWidget {
                 children: [
                   information,
                   const SizedBox(height: WorkbenchSpace.x2),
-                  Align(alignment: Alignment.centerRight, child: trailing),
+                  Align(alignment: Alignment.centerLeft, child: trailing),
                 ],
               );
             }
@@ -100,6 +102,7 @@ class _SettingRowInformation extends StatelessWidget {
                 style: textTheme.bodyMedium?.copyWith(
                   color: tokens.ink,
                   fontWeight: FontWeight.w500,
+                  fontSize: SettingsExperience.isDeveloper(context) ? 14 : 16,
                 ),
               ),
               if (description.isNotEmpty) ...[

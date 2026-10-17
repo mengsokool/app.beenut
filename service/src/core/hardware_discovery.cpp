@@ -1,4 +1,5 @@
 #include "hardware_discovery.h"
+#include "ncnn_yolo_engine.h"
 
 #include <QCoreApplication>
 #include <QDir>
@@ -423,11 +424,22 @@ QJsonArray discoverAiRuntimes(const AppConfig& config)
     runtimes.append(QJsonObject{
         {"id", "onnx"},
         {"name", "ONNX Runtime"},
-        {"available", model.exists()},
+        {"available", true},
         {"detail", model.exists()
              ? QString("model found: %1 · labels mode: %2")
                    .arg(model.fileName(), config.model.labelsMode)
-             : QString("model missing: %1").arg(config.model.modelPath)},
+             : config.model.modelPath.trimmed().isEmpty()
+                   ? QString("no model selected")
+                   : QString("model missing: %1").arg(config.model.modelPath)},
+    });
+    runtimes.append(QJsonObject{
+        {"id", "ncnn"},
+        {"name", "NCNN"},
+        {"available", NcnnYoloEngine::runtimeAvailable()},
+        {"gpuAvailable", NcnnYoloEngine::gpuAvailable()},
+        {"detail", NcnnYoloEngine::runtimeAvailable()
+            ? (NcnnYoloEngine::gpuAvailable() ? "CPU and Vulkan GPU available" : "CPU available; Vulkan GPU unavailable")
+            : "NCNN runtime is not linked in this build"},
     });
     const bool hailoDevice = QFileInfo::exists("/dev/hailo0");
     const bool hailoCli = executableExists("hailortcli");
@@ -634,13 +646,34 @@ QJsonObject validateConfig(const AppConfig& config, const CapabilitySnapshot& ca
     }
     if (config.model.engine == "onnx") {
         if (!QFileInfo::exists(config.model.modelPath)) {
-            errors.append(QString("ONNX model file does not exist: %1").arg(config.model.modelPath));
+            warnings.append(QString("ONNX model file does not exist: %1").arg(config.model.modelPath));
         }
         if (config.model.labelsMode == "custom") {
             const auto labelsPath = resolvedLabelsPath(config.model);
             if (labelsPath.isEmpty() || !QFileInfo::exists(labelsPath)) {
                 warnings.append(QString("Custom labels file does not exist: %1").arg(labelsPath));
             }
+        }
+    }
+    if (config.model.engine == "ncnn") {
+        if (config.model.ncnnDevice != "cpu" && config.model.ncnnDevice != "gpu") {
+            errors.append("NCNN device must be cpu or gpu");
+        }
+        if (config.model.ncnnThreads < 1 || config.model.ncnnThreads > 32) {
+            errors.append("NCNN threads must be between 1 and 32");
+        }
+        if (config.model.ncnnDevice == "gpu" && !NcnnYoloEngine::gpuAvailable()) {
+            errors.append("NCNN GPU requested but Vulkan compute is unavailable");
+        }
+        if (!config.model.modelPath.isEmpty() && !config.model.modelPath.endsWith(".param")) {
+            errors.append("NCNN model must be a .param file");
+        }
+        if (!QFileInfo::exists(config.model.modelPath)) {
+            warnings.append(QString("NCNN .param file does not exist: %1").arg(config.model.modelPath));
+        }
+        const auto binPath = NcnnYoloEngine::resolvedBinPath(config.model);
+        if (binPath.isEmpty() || !QFileInfo::exists(binPath)) {
+            warnings.append(QString("NCNN .bin weights do not exist: %1").arg(binPath));
         }
     }
     if (config.model.confidenceThreshold <= 0.0 || config.model.confidenceThreshold >= 1.0) {

@@ -1,23 +1,12 @@
 #pragma once
 
-#include "app_config.h"
-#include "service_state.h"
-
-#include <QObject>
-#include <QStringList>
-
-#include <gst/gstsample.h>
+#include "inference_engine.h"
 #include <onnxruntime_cxx_api.h>
+#include <mutex>
+
+class QElapsedTimer;
 
 namespace beenut {
-
-struct InferenceResult {
-    int count = 0;
-    int processingMs = 0;
-    QVector<Detection> detections;
-};
-
-bool labelMatchesPart(const QString& label, const QString& partType, const QStringList& keywords = {});
 
 /**
  * @brief The OnnxYoloEngine class wraps the ONNX Runtime YOLO inference engine.
@@ -26,7 +15,7 @@ bool labelMatchesPart(const QString& label, const QString& partType, const QStri
  * GStreamer video samples, parsing outputs, performing non-maximum suppression (NMS),
  * and filtering outputs by targeted part type keywords.
  */
-class OnnxYoloEngine : public QObject {
+class OnnxYoloEngine : public IInferenceEngine {
     Q_OBJECT
 
 public:
@@ -36,46 +25,32 @@ public:
      * @param parent Optional Qt parent QObject.
      */
     explicit OnnxYoloEngine(ModelConfig config, QObject* parent = nullptr);
+    virtual ~OnnxYoloEngine();
 
     /**
      * @brief Reloads a new configuration and rebuilds the ONNX session.
      * @return true if reload succeeded, false otherwise.
      */
-    bool reload(ModelConfig config);
+    bool reload(ModelConfig config) override;
+    bool isReady() const override;
+    QString detail() const override;
+    QStringList labels() const override;
 
-    /**
-     * @brief Checks if the ONNX session is fully loaded and ready to process frames.
-     */
-    bool isReady() const;
+#ifndef ANDROID
+    InferenceResult run(GstSample* sample, const QString& partType, const QStringList& keywords = {}) override;
+#endif
 
-    /**
-     * @brief Gets detail information about session loading status or errors.
-     */
-    QString detail() const;
+    InferenceResult run(const unsigned char* rgbData, int width, int height, const QString& partType, const QStringList& keywords = {}) override;
 
-    /**
-     * @brief Gets the list of labels loaded from the model or labels file.
-     */
-    QStringList labels() const;
-
-    /**
-     * @brief Runs inference synchronously on a GStreamer video sample.
-     * @param sample The video frame sample.
-     * @param partType The active part type ID to filter matches.
-     * @param keywords List of keywords associated with the selected part.
-     * @return The parsed inference results containing count and bounding boxes.
-     */
-    InferenceResult run(GstSample* sample, const QString& partType, const QStringList& keywords = {});
-
+#ifndef ANDROID
 public slots:
-    void runInference(void* sample, const QString& partType, const QStringList& keywords);
-    void reloadEngine(beenut::ModelConfig config);
-
-signals:
-    void inferenceFinished(const beenut::InferenceResult& result);
-    void statusChanged(bool ready, const QString& detail, const QStringList& labels);
+    void runInference(void* sample, const QString& partType, const QStringList& keywords) override;
+    void reloadEngine(beenut::ModelConfig config) override;
+#endif
 
 private:
+    InferenceResult runOnPreprocessedInput(int width, int height, const QString& partType, const QStringList& keywords, const QElapsedTimer& timer);
+
     ModelConfig config_;
     Ort::Env env_;
     Ort::SessionOptions sessionOptions_;
@@ -89,10 +64,7 @@ private:
     int mockTick_ = 0;
     int64_t batchSize_ = 1;
     std::vector<float> inputBuffer_;
+    mutable std::mutex engineMutex_;
 };
 
 }  // namespace beenut
-
-Q_DECLARE_METATYPE(beenut::Detection)
-Q_DECLARE_METATYPE(beenut::InferenceResult)
-Q_DECLARE_METATYPE(beenut::ModelConfig)

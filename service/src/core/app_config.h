@@ -1,8 +1,12 @@
 #pragma once
 
+#ifdef ANDROID
+#include "qt_compat.h"
+#else
 #include <QJsonObject>
 #include <QString>
 #include <QVector>
+#endif
 
 namespace beenut {
 
@@ -14,6 +18,7 @@ struct PartType {
     QString image;
     QStringList keywords;
     bool enabled = true;
+    QJsonObject classNames;
 };
 
 struct GpioConfig {
@@ -42,6 +47,9 @@ struct CameraConfig {
 struct ModelConfig {
     QString engine = "onnx";
     QString modelPath;
+    QString ncnnBinPath;
+    QString ncnnDevice = "cpu";
+    int ncnnThreads = 2;
     QString labelsMode = "auto";
     QString labelsPath;
     int inputSize = 640;

@@ -1,12 +1,22 @@
 import 'dart:async';
+import 'dart:io';
 
 import 'package:flutter/foundation.dart';
 import 'models.dart';
 import 'i18n.dart';
 import 'service_protocol.dart';
 import 'service_transport.dart';
+import 'android_ffi_service_client.dart';
 
-abstract interface class KioskServiceClient {
+KioskServiceClient createServiceClient() {
+  if (Platform.isAndroid) {
+    return AndroidFfiServiceClient();
+  } else {
+    return ServiceClient();
+  }
+}
+
+abstract class KioskServiceClient extends ChangeNotifier {
   MachineSnapshot get snapshot;
 
   void start();
@@ -22,7 +32,7 @@ abstract interface class KioskServiceClient {
   void runDiagnostic(String target);
 }
 
-class ServiceClient extends ChangeNotifier implements KioskServiceClient {
+class ServiceClient extends KioskServiceClient {
   ServiceClient({
     this.socketPath = '/tmp/beenutd.sock',
     ServiceTransport? transport,
@@ -44,6 +54,7 @@ class ServiceClient extends ChangeNotifier implements KioskServiceClient {
   StreamSubscription<List<int>>? _subscription;
   Timer? _reconnectTimer;
   Timer? _configSaveTimer;
+  Timer? _configSaveAckTimer;
   final _lineFramer = Utf8LineFramer();
   MachineConfig? _serverConfig;
   MachineConfig? _optimisticConfig;
@@ -170,6 +181,7 @@ class ServiceClient extends ChangeNotifier implements KioskServiceClient {
     final result = ConfigSaveResult.fromJson(
       root['result'] as Map<String, dynamic>? ?? {},
     );
+    _configSaveAckTimer?.cancel();
     if (result.ok) {
       final saved = _saveInFlightConfig;
       if (saved != null) {
@@ -186,6 +198,7 @@ class ServiceClient extends ChangeNotifier implements KioskServiceClient {
       _saveInFlightConfig = null;
       _pendingConfigSave = null;
       _configSaveTimer?.cancel();
+      _configSaveTimer = null;
     }
     _updateSnapshot(
       snapshot.copyWith(
@@ -194,6 +207,7 @@ class ServiceClient extends ChangeNotifier implements KioskServiceClient {
         saveResult: result,
       ),
     );
+    if (result.ok && _configSaveTimer == null) _flushConfigSave();
   }
 
   @visibleForTesting
@@ -280,15 +294,39 @@ class ServiceClient extends ChangeNotifier implements KioskServiceClient {
     _pendingConfigSave = config;
     _configSaveTimer?.cancel();
     _configSaveTimer = Timer(const Duration(milliseconds: 220), () {
-      final pending = _pendingConfigSave;
-      _pendingConfigSave = null;
-      if (pending == null || _disposed) return;
-      _saveInFlightConfig = pending;
-      final json = pending.toJson();
-      _send({'type': 'validateConfig', 'config': json});
-      _send({'type': 'saveConfig', 'config': json});
+      _configSaveTimer = null;
+      _flushConfigSave();
     });
   }
+
+  void _flushConfigSave() {
+    // Save acknowledgements have no request ID. Keep one request in flight so
+    // an older result cannot acknowledge a newer camera adjustment.
+    if (_disposed || _saveInFlightConfig != null) return;
+    final pending = _pendingConfigSave;
+    if (pending == null) return;
+    _pendingConfigSave = null;
+    _saveInFlightConfig = pending;
+    _configSaveAckTimer?.cancel();
+    _configSaveAckTimer = Timer(const Duration(seconds: 10), () {
+      if (!_disposed && _saveInFlightConfig != null) {
+        _failConfigSave(
+          'No response from service. Retry changing the settings.',
+        );
+      }
+    });
+    final json = pending.toJson();
+    _send({'type': 'validateConfig', 'config': json});
+    _send({'type': 'saveConfig', 'config': json});
+  }
+
+  void _failConfigSave(String message) => _handleConfigSaveResultEvent({
+    'result': {
+      'ok': false,
+      'message': message,
+      'timestampMs': DateTime.now().millisecondsSinceEpoch,
+    },
+  });
 
   void _send(Map<String, Object?> payload) {
     _transport.send(encodeProtocolLine(payload));
@@ -316,6 +354,9 @@ class ServiceClient extends ChangeNotifier implements KioskServiceClient {
     if (_disposed) return;
     _subscription?.cancel();
     unawaited(_transport.close());
+    if (_saveInFlightConfig != null || _pendingConfigSave != null) {
+      _failConfigSave('Service disconnected before settings were confirmed.');
+    }
     _updateSnapshot(snapshot.copyWith(connected: false));
     _reconnectTimer?.cancel();
     _reconnectTimer = Timer(const Duration(milliseconds: 750), _connect);
@@ -326,6 +367,7 @@ class ServiceClient extends ChangeNotifier implements KioskServiceClient {
     _disposed = true;
     _reconnectTimer?.cancel();
     _configSaveTimer?.cancel();
+    _configSaveAckTimer?.cancel();
     _subscription?.cancel();
     unawaited(_transport.close());
     super.dispose();

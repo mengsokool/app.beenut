@@ -17,6 +17,50 @@ class MaintenanceActionResult {
 class MaintenanceActions {
   const MaintenanceActions._();
 
+  static Map<String, String> _buildEnvironment(String assetsPath, Directory appSupportDir) {
+    final defaultConfigFile = File('$assetsPath/service/config/default.json');
+    final defaultConfPath = defaultConfigFile.existsSync()
+        ? defaultConfigFile.path
+        : '${Directory.current.path}/service/config/default.json';
+
+    return Map<String, String>.from(Platform.environment)
+      ..putIfAbsent('BEENUT_CONFIG', () => '${appSupportDir.path}/config.json')
+      ..putIfAbsent('BEENUT_DEFAULT_CONFIG', () => defaultConfPath)
+      ..putIfAbsent('BACKUP_DIR', () => '${appSupportDir.path}/backups/config')
+      ..putIfAbsent('BACKUP_ROOT', () => '${appSupportDir.path}/backups')
+      ..putIfAbsent('LOG_DIR', () => '${appSupportDir.path}/logs')
+      ..putIfAbsent('RESULT_LOG', () => '${appSupportDir.path}/logs/update-result.log')
+      ..putIfAbsent('BEENUT_SOCKET', () => '/tmp/beenutd.sock')
+      ..putIfAbsent('RUNTIME_DIR', () => '/tmp');
+  }
+
+  static String getApplicationSupportDirectory() {
+    final home = Platform.environment['HOME'] ?? Platform.environment['USERPROFILE'] ?? '.';
+    if (Platform.isMacOS) {
+      return '$home/Library/Application Support/beenut';
+    } else if (Platform.isLinux) {
+      final xdgConfig = Platform.environment['XDG_CONFIG_HOME'];
+      if (xdgConfig != null && xdgConfig.isNotEmpty) {
+        return '$xdgConfig/beenut';
+      }
+      return '$home/.config/beenut';
+    } else {
+      return '$home/.beenut';
+    }
+  }
+
+  static String _getAssetsPath() {
+    final exePath = Platform.resolvedExecutable;
+    final exeDir = File(exePath).parent.path;
+    if (Platform.isMacOS) {
+      final assetsDir = Directory('${File(exeDir).parent.path}/Frameworks/App.framework/Resources/flutter_assets');
+      if (assetsDir.existsSync()) {
+        return assetsDir.path;
+      }
+    }
+    return Directory.current.path;
+  }
+
   static Future<MaintenanceActionResult> collectDiagnostics() async {
     final script = _findScript('collect-diagnostics.sh');
     if (script == null) {
@@ -29,9 +73,10 @@ class MaintenanceActions {
     }
 
     final outputDir = await _diagnosticsOutputDir();
-    final environment = Map<String, String>.from(Platform.environment)
-      ..putIfAbsent('OUTPUT_DIR', () => outputDir.path)
-      ..putIfAbsent('RUNTIME_DIR', () => '/tmp');
+    final appSupportDir = Directory(getApplicationSupportDirectory());
+    final assetsPath = _getAssetsPath();
+    final environment = _buildEnvironment(assetsPath, appSupportDir)
+      ..putIfAbsent('OUTPUT_DIR', () => outputDir.path);
 
     final result = await Process.run('bash', [
       script.path,
@@ -79,8 +124,12 @@ class MaintenanceActions {
       );
     }
 
+    final appSupportDir = Directory(getApplicationSupportDirectory());
+    final assetsPath = _getAssetsPath();
+    final environment = _buildEnvironment(assetsPath, appSupportDir);
+
     final args = [script.path, if (!restartServices) '--no-restart'];
-    final result = await Process.run('bash', args);
+    final result = await Process.run('bash', args, environment: environment);
     final stdoutText = '${result.stdout}'.trim();
     final stderrText = '${result.stderr}'.trim();
     final detail = [
@@ -151,13 +200,17 @@ class MaintenanceActions {
       );
     }
 
+    final appSupportDir = Directory(getApplicationSupportDirectory());
+    final assetsPath = _getAssetsPath();
+    final environment = _buildEnvironment(assetsPath, appSupportDir);
+
     final args = [
       script.path,
       if (dryRun) '--dry-run',
       if (!restartServices) '--no-restart',
       updateDir,
     ];
-    final result = await Process.run('bash', args);
+    final result = await Process.run('bash', args, environment: environment);
     final stdoutText = '${result.stdout}'.trim();
     final stderrText = '${result.stderr}'.trim();
     final detail = [
@@ -183,7 +236,11 @@ class MaintenanceActions {
   }
 
   static File? _findScript(String name) {
+    final exeDir = File(Platform.resolvedExecutable).parent.path;
+    final macosResourcesScript = File('${File(exeDir).parent.path}/Resources/scripts/$name');
+
     final candidates = [
+      if (Platform.isMacOS) macosResourcesScript,
       File('/opt/beenut/scripts/$name'),
       File('packaging/scripts/$name'),
     ];

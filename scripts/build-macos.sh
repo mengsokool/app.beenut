@@ -34,6 +34,12 @@ install -m 0755 \
   "$ROOT_DIR/service/build/src/beenutd/beenutd" \
   "$APP_DIR/Contents/MacOS/beenutd"
 
+# Copy maintenance scripts to App bundle resources
+mkdir -p "$APP_DIR/Contents/Resources/scripts"
+cp -R "$ROOT_DIR/packaging/scripts/" "$APP_DIR/Contents/Resources/scripts/"
+chmod +x "$APP_DIR/Contents/Resources/scripts"/*.sh
+
+
 if command -v codesign >/dev/null 2>&1; then
   SIGN_IDENTITY="${MACOS_CODESIGN_IDENTITY:--}"
   if [[ "$PRODUCT_MODE" == "Release" ]]; then

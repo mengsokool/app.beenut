@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 
+import '../../core/dls_tokens.dart';
 import '../../core/theme.dart';
-import '../../core/workbench_tokens.dart';
 import 'setting_types.dart';
 
 @immutable
@@ -63,17 +63,18 @@ class _SystemStatusRowState extends State<SystemStatusRow> {
 
   @override
   Widget build(BuildContext context) {
-    final tokens = context.workbenchColors;
+    final colors = context.dlsColors;
+    final spacing = context.dlsSpacing;
     final disableAnimations = MediaQuery.disableAnimationsOf(context);
 
     return Column(
       children: [
         ConstrainedBox(
-          constraints: const BoxConstraints(minHeight: 64),
+          constraints: const BoxConstraints(minHeight: 64.0),
           child: Padding(
-            padding: const EdgeInsets.symmetric(
-              horizontal: WorkbenchSpace.x3,
-              vertical: WorkbenchSpace.x3,
+            padding: EdgeInsets.symmetric(
+              horizontal: spacing.md,
+              vertical: spacing.md,
             ),
             child: LayoutBuilder(
               builder: (context, constraints) {
@@ -86,7 +87,7 @@ class _SystemStatusRowState extends State<SystemStatusRow> {
           ),
         ),
         if (widget.details.isNotEmpty) ...[
-          Divider(height: 1, color: tokens.lineSubtle),
+          Divider(height: 1, color: colors.borderSubtle),
           Semantics(
             button: true,
             expanded: _expanded,
@@ -94,12 +95,12 @@ class _SystemStatusRowState extends State<SystemStatusRow> {
               onTap: () => setState(() => _expanded = !_expanded),
               child: ConstrainedBox(
                 constraints: const BoxConstraints(
-                  minHeight: WorkbenchMetric.technicianHitTarget,
+                  minHeight: 48.0,
                 ),
                 child: Padding(
-                  padding: const EdgeInsets.symmetric(
-                    horizontal: WorkbenchSpace.x3,
-                    vertical: WorkbenchSpace.x2,
+                  padding: EdgeInsets.symmetric(
+                    horizontal: spacing.md,
+                    vertical: spacing.sm,
                   ),
                   child: Row(
                     children: [
@@ -112,17 +113,17 @@ class _SystemStatusRowState extends State<SystemStatusRow> {
                         child: Icon(
                           Icons.keyboard_arrow_down,
                           size: 18,
-                          color: tokens.actionText,
+                          color: colors.accent,
                         ),
                       ),
-                      const SizedBox(width: WorkbenchSpace.x2),
+                      SizedBox(width: spacing.sm),
                       Text(
                         _expanded
                             ? widget.hideDetailsLabel
                             : widget.showDetailsLabel,
                         style: Theme.of(context).textTheme.labelLarge?.copyWith(
-                          color: tokens.actionText,
-                        ),
+                              color: colors.accent,
+                            ),
                       ),
                     ],
                   ),
@@ -146,11 +147,12 @@ class _SystemStatusRowState extends State<SystemStatusRow> {
   }
 
   Widget _buildWideRow(BuildContext context) {
-    final tokens = context.workbenchColors;
+    final colors = context.dlsColors;
+    final spacing = context.dlsSpacing;
     final labelStyle = Theme.of(context).textTheme.bodyMedium?.copyWith(
-      color: tokens.ink,
-      fontWeight: FontWeight.w500,
-    );
+          color: colors.inkPrimary,
+          fontWeight: FontWeight.w500,
+        );
     return Row(
       crossAxisAlignment: CrossAxisAlignment.center,
       children: [
@@ -158,7 +160,7 @@ class _SystemStatusRowState extends State<SystemStatusRow> {
           width: 24,
           child: Icon(widget.icon, size: 18, color: widget.iconColor),
         ),
-        const SizedBox(width: WorkbenchSpace.x2),
+        SizedBox(width: spacing.sm),
         SizedBox(
           width: 130,
           child: Text(
@@ -168,7 +170,7 @@ class _SystemStatusRowState extends State<SystemStatusRow> {
             style: labelStyle,
           ),
         ),
-        const SizedBox(width: WorkbenchSpace.x3),
+        SizedBox(width: spacing.md),
         SizedBox(
           width: 108,
           child: _SystemStatusIndicator(
@@ -177,7 +179,7 @@ class _SystemStatusRowState extends State<SystemStatusRow> {
           ),
         ),
         if (widget.metrics.isNotEmpty) ...[
-          const SizedBox(width: WorkbenchSpace.x3),
+          SizedBox(width: spacing.md),
           Expanded(child: _WideMetricGrid(metrics: widget.metrics)),
         ] else
           const Spacer(),
@@ -186,7 +188,8 @@ class _SystemStatusRowState extends State<SystemStatusRow> {
   }
 
   Widget _buildCompactRow(BuildContext context) {
-    final tokens = context.workbenchColors;
+    final colors = context.dlsColors;
+    final spacing = context.dlsSpacing;
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -197,17 +200,17 @@ class _SystemStatusRowState extends State<SystemStatusRow> {
               width: 24,
               child: Icon(widget.icon, size: 18, color: widget.iconColor),
             ),
-            const SizedBox(width: WorkbenchSpace.x2),
+            SizedBox(width: spacing.sm),
             Expanded(
               child: Text(
                 widget.label,
                 style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                  color: tokens.ink,
-                  fontWeight: FontWeight.w500,
-                ),
+                      color: colors.inkPrimary,
+                      fontWeight: FontWeight.w500,
+                    ),
               ),
             ),
-            const SizedBox(width: WorkbenchSpace.x3),
+            SizedBox(width: spacing.md),
             Flexible(
               child: _SystemStatusIndicator(
                 status: widget.status,
@@ -217,10 +220,10 @@ class _SystemStatusRowState extends State<SystemStatusRow> {
           ],
         ),
         if (widget.metrics.isNotEmpty) ...[
-          const SizedBox(height: WorkbenchSpace.x3),
+          SizedBox(height: spacing.md),
           Wrap(
-            spacing: WorkbenchSpace.x4,
-            runSpacing: WorkbenchSpace.x3,
+            spacing: spacing.lg,
+            runSpacing: spacing.md,
             children: [
               for (final metric in widget.metrics)
                 ConstrainedBox(
@@ -246,12 +249,13 @@ class _SystemStatusIndicator extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final tokens = context.workbenchColors;
+    final colors = context.dlsColors;
+    final spacing = context.dlsSpacing;
     final color = switch (tone) {
-      RowTone.success => tokens.success,
-      RowTone.warning => tokens.warning,
-      RowTone.danger => tokens.danger,
-      RowTone.neutral => tokens.muted,
+      RowTone.success => colors.success,
+      RowTone.warning => colors.warning,
+      RowTone.danger => colors.danger,
+      RowTone.neutral => colors.inkSecondary,
     };
     return Semantics(
       label: status,
@@ -259,19 +263,20 @@ class _SystemStatusIndicator extends StatelessWidget {
         mainAxisSize: MainAxisSize.min,
         children: [
           Container(
-            width: 7,
-            height: 7,
+            width: 8,
+            height: 8,
             decoration: BoxDecoration(color: color, shape: BoxShape.circle),
           ),
-          const SizedBox(width: WorkbenchSpace.x2),
+          SizedBox(width: spacing.sm),
           Flexible(
             child: Text(
               status,
               maxLines: 1,
               overflow: TextOverflow.ellipsis,
-              style: Theme.of(
-                context,
-              ).textTheme.labelLarge?.copyWith(color: color),
+              style: Theme.of(context)
+                  .textTheme
+                  .labelLarge
+                  ?.copyWith(color: color, fontWeight: FontWeight.w600),
             ),
           ),
         ],
@@ -287,15 +292,16 @@ class _WideMetricGrid extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final line = context.workbenchColors.lineSubtle;
+    final colors = context.dlsColors;
+    final spacing = context.dlsSpacing;
     return Row(
       crossAxisAlignment: CrossAxisAlignment.center,
       children: [
         for (int index = 0; index < metrics.length; index++) ...[
           if (index > 0) ...[
-            const SizedBox(width: WorkbenchSpace.x3),
-            Container(width: 1, height: 36, color: line),
-            const SizedBox(width: WorkbenchSpace.x3),
+            SizedBox(width: spacing.md),
+            Container(width: 1, height: 36, color: colors.borderSubtle),
+            SizedBox(width: spacing.md),
           ],
           Expanded(child: _StatusMetricBlock(metric: metrics[index])),
         ],
@@ -311,7 +317,8 @@ class _StatusMetricBlock extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final tokens = context.workbenchColors;
+    final colors = context.dlsColors;
+    final spacing = context.dlsSpacing;
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       mainAxisAlignment: MainAxisAlignment.center,
@@ -323,16 +330,17 @@ class _StatusMetricBlock extends StatelessWidget {
           overflow: TextOverflow.ellipsis,
           style: Theme.of(context).textTheme.bodySmall,
         ),
-        const SizedBox(height: WorkbenchSpace.x1),
+        SizedBox(height: spacing.xs),
         Text(
           metric.value,
           maxLines: 2,
           overflow: TextOverflow.ellipsis,
           style: metric.monospace
-              ? BeenutTheme.dataTextStyle(context).copyWith(color: tokens.ink)
-              : Theme.of(
-                  context,
-                ).textTheme.bodyMedium?.copyWith(color: tokens.ink),
+              ? BeenutTheme.dataTextStyle(context).copyWith(color: colors.inkPrimary)
+              : Theme.of(context)
+                  .textTheme
+                  .bodyMedium
+                  ?.copyWith(color: colors.inkPrimary),
         ),
       ],
     );
@@ -346,14 +354,15 @@ class _StatusDetailsRegion extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final tokens = context.workbenchColors;
+    final colors = context.dlsColors;
+    final spacing = context.dlsSpacing;
     return DecoratedBox(
       decoration: BoxDecoration(
-        color: tokens.raised,
-        border: Border(top: BorderSide(color: tokens.lineSubtle)),
+        color: colors.surfaceRaised,
+        border: Border(top: BorderSide(color: colors.borderSubtle)),
       ),
       child: Padding(
-        padding: const EdgeInsets.all(WorkbenchSpace.x3),
+        padding: EdgeInsets.all(spacing.md),
         child: LayoutBuilder(
           builder: (context, constraints) {
             final compact = constraints.maxWidth < 520;
@@ -362,7 +371,7 @@ class _StatusDetailsRegion extends StatelessWidget {
                 for (int index = 0; index < details.length; index++) ...[
                   _StatusDetailRow(detail: details[index], compact: compact),
                   if (index < details.length - 1)
-                    const SizedBox(height: WorkbenchSpace.x3),
+                    SizedBox(height: spacing.md),
                 ],
               ],
             );
@@ -381,6 +390,7 @@ class _StatusDetailRow extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final spacing = context.dlsSpacing;
     final label = Text(
       detail.label,
       style: Theme.of(context).textTheme.bodySmall,
@@ -396,7 +406,7 @@ class _StatusDetailRow extends StatelessWidget {
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           label,
-          const SizedBox(height: WorkbenchSpace.x1),
+          SizedBox(height: spacing.xs),
           value,
         ],
       );
@@ -405,7 +415,7 @@ class _StatusDetailRow extends StatelessWidget {
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         SizedBox(width: 132, child: label),
-        const SizedBox(width: WorkbenchSpace.x3),
+        SizedBox(width: spacing.md),
         Expanded(child: value),
       ],
     );

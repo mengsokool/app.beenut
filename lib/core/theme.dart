@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 
+import 'dls_tokens.dart';
 import 'workbench_tokens.dart';
 
 class BeenutTheme {
@@ -14,8 +15,8 @@ class BeenutTheme {
   static const warning = Color(0xff9a3412);
   static const danger = Color(0xffb91c1c);
   static const previewBlack = Color(0xff09090b);
-  static const fontFamily = 'NotoSansThai';
-  static const fontFamilyFallback = ['NotoSans'];
+  static const fontFamily = 'IBMPlexSansThaiLooped';
+  static const fontFamilyFallback = ['IBMPlexSans'];
 
   static const radiusSharp = BorderRadius.all(
     Radius.circular(WorkbenchRadius.control),
@@ -25,6 +26,30 @@ class BeenutTheme {
   );
   static const controlShape = RoundedRectangleBorder(borderRadius: radiusSharp);
   static const panelShape = RoundedRectangleBorder(borderRadius: radiusPanel);
+
+  static Color getLabelColor(String label, List<String> keywords) {
+    if (keywords.length <= 1) {
+      return const Color(0xff06b6d4); // Cyan (default single class color)
+    }
+    const colors = [
+      Color(0xffef4444), // Red
+      Color(0xff22c55e), // Green
+      Color(0xff3b82f6), // Blue
+      Color(0xffeab308), // Yellow
+      Color(0xffa855f7), // Purple
+      Color(0xfff97316), // Orange
+      Color(0xffec4899), // Pink
+      Color(0xff06b6d4), // Cyan
+    ];
+    final normalizedLabel = label.toLowerCase().trim();
+    for (int i = 0; i < keywords.length; i++) {
+      final kw = keywords[i].toLowerCase().trim();
+      if (kw == normalizedLabel || normalizedLabel.contains(kw) || kw.contains(normalizedLabel)) {
+        return colors[i % colors.length];
+      }
+    }
+    return const Color(0xff06b6d4);
+  }
 
   static WorkbenchColors colors(BuildContext context) =>
       context.workbenchColors;
@@ -73,54 +98,97 @@ class BeenutTheme {
     fontFeatures: const [FontFeature.tabularFigures()],
   );
 
-  static ThemeData get light =>
-      _buildTheme(WorkbenchColors.light, brightness: Brightness.light);
+  static const kioskHighContrastWorkbench = WorkbenchColors(
+    action: Color(0xffffd600),
+    actionHover: Color(0xffffee58),
+    actionActive: Color(0xffffc400),
+    actionSoft: Color(0xff332b00),
+    actionText: Color(0xffffd600),
+    actionFocus: Color(0xffffd600),
+    onAction: Color(0xff000000),
+    canvas: Color(0xff000000),
+    surface: Color(0xff121212),
+    raised: Color(0xff2c2c2c),
+    ink: Color(0xffffffff),
+    muted: Color(0xffe0e0e0),
+    disabled: Color(0xff808080),
+    line: Color(0xffffffff),
+    lineSubtle: Color(0xffa0a0a0),
+    success: Color(0xff00e676),
+    successSoft: Color(0xff003319),
+    warning: Color(0xffff9100),
+    warningSoft: Color(0xff331d00),
+    danger: Color(0xffff1744),
+    dangerSoft: Color(0xff33050e),
+    info: Color(0xff00b0ff),
+    infoSoft: Color(0xff002233),
+    previewBlack: Color(0xff000000),
+  );
 
-  static ThemeData get dark =>
-      _buildTheme(WorkbenchColors.dark, brightness: Brightness.dark);
+  static final ThemeData light = _buildTheme(
+    DlsThemeExtension.light,
+    workbenchColors: WorkbenchColors.light,
+    brightness: Brightness.light,
+  );
+
+  static final ThemeData dark = _buildTheme(
+    DlsThemeExtension.dark,
+    workbenchColors: WorkbenchColors.dark,
+    brightness: Brightness.dark,
+  );
+
+  static final ThemeData kioskHighContrast = _buildTheme(
+    DlsThemeExtension.kioskHighContrast,
+    workbenchColors: kioskHighContrastWorkbench,
+    brightness: Brightness.dark,
+  );
+
 
   static ThemeData _buildTheme(
-    WorkbenchColors tokens, {
+    DlsThemeExtension dlsTokens, {
+    required WorkbenchColors workbenchColors,
     required Brightness brightness,
   }) {
-    final scheme =
-        ColorScheme.fromSeed(
-          seedColor: tokens.action,
-          brightness: brightness,
-          surface: tokens.surface,
-        ).copyWith(
-          primary: tokens.action,
-          onPrimary: tokens.onAction,
-          primaryContainer: tokens.actionSoft,
-          onPrimaryContainer: tokens.actionText,
-          secondary: tokens.action,
-          onSecondary: tokens.onAction,
-          secondaryContainer: tokens.actionSoft,
-          onSecondaryContainer: tokens.actionText,
-          tertiary: tokens.success,
-          onTertiary: brightness == Brightness.light
-              ? tokens.surface
-              : const Color(0xff052e16),
-          tertiaryContainer: tokens.successSoft,
-          onTertiaryContainer: tokens.success,
-          error: tokens.danger,
-          onError: tokens.surface,
-          errorContainer: tokens.dangerSoft,
-          onErrorContainer: tokens.danger,
-          surface: tokens.surface,
-          surfaceDim: tokens.canvas,
-          surfaceBright: tokens.surface,
-          surfaceContainerLowest: tokens.surface,
-          surfaceContainerLow: tokens.raised,
-          surfaceContainer: tokens.surface,
-          surfaceContainerHigh: tokens.raised,
-          surfaceContainerHighest: tokens.lineSubtle,
-          outline: tokens.line,
-          outlineVariant: tokens.lineSubtle,
-          onSurface: tokens.ink,
-          onSurfaceVariant: tokens.muted,
-        );
-    final textTheme = _textTheme(tokens);
+    final colors = dlsTokens.colors;
+    final radii = dlsTokens.radii;
+
+    final scheme = ColorScheme.fromSeed(
+      seedColor: colors.accent,
+      brightness: brightness,
+      surface: workbenchColors.surface,
+    ).copyWith(
+      primary: workbenchColors.action,
+      onPrimary: workbenchColors.onAction,
+      primaryContainer: workbenchColors.actionSoft,
+      onPrimaryContainer: workbenchColors.actionText,
+      secondary: workbenchColors.action,
+      onSecondary: workbenchColors.onAction,
+      secondaryContainer: workbenchColors.actionSoft,
+      onSecondaryContainer: workbenchColors.actionText,
+      tertiary: workbenchColors.success,
+      onTertiary: brightness == Brightness.light
+          ? workbenchColors.surface
+          : const Color(0xff052e16),
+      tertiaryContainer: workbenchColors.successSoft,
+      onTertiaryContainer: workbenchColors.success,
+      error: workbenchColors.danger,
+      onError: workbenchColors.surface,
+      errorContainer: workbenchColors.dangerSoft,
+      onErrorContainer: workbenchColors.danger,
+      surface: workbenchColors.surface,
+      surfaceDim: workbenchColors.canvas,
+      surfaceBright: workbenchColors.surface,
+      surfaceContainerLowest: workbenchColors.surface,
+      surfaceContainerLow: workbenchColors.raised,
+      surfaceContainer: workbenchColors.surface,
+      surfaceContainerHigh: workbenchColors.raised,
+      surfaceContainerHighest: workbenchColors.lineSubtle,
+      outline: workbenchColors.line,
+      outlineVariant: workbenchColors.lineSubtle,
+      onSurface: workbenchColors.ink,
+      onSurfaceVariant: workbenchColors.muted,
+    );
+    final textTheme = _textTheme(colors);
 
     return ThemeData(
       useMaterial3: true,
@@ -128,36 +196,48 @@ class BeenutTheme {
       fontFamily: fontFamily,
       fontFamilyFallback: fontFamilyFallback,
       colorScheme: scheme,
-      scaffoldBackgroundColor: tokens.canvas,
-      canvasColor: tokens.canvas,
-      disabledColor: tokens.disabled,
-      focusColor: tokens.actionSoft,
-      hoverColor: tokens.raised,
-      splashColor: tokens.actionSoft,
+      scaffoldBackgroundColor: workbenchColors.canvas,
+      canvasColor: workbenchColors.canvas,
+      disabledColor: workbenchColors.disabled,
+      focusColor: workbenchColors.actionSoft,
+      hoverColor: workbenchColors.raised,
+      splashColor: workbenchColors.actionSoft,
       highlightColor: Colors.transparent,
       textTheme: textTheme,
-      extensions: [tokens],
+      extensions: [
+        dlsTokens,
+        dlsTokens.colors,
+        dlsTokens.radii,
+        dlsTokens.spacing,
+        dlsTokens.shadows,
+        dlsTokens.animations,
+        workbenchColors,
+      ],
       filledButtonTheme: FilledButtonThemeData(
         style: ButtonStyle(
           backgroundColor: WidgetStateProperty.resolveWith((states) {
             if (states.contains(WidgetState.disabled)) {
-              return tokens.lineSubtle;
+              return workbenchColors.lineSubtle;
             }
             if (states.contains(WidgetState.pressed)) {
-              return tokens.actionActive;
+              return workbenchColors.actionActive;
             }
             if (states.contains(WidgetState.hovered)) {
-              return tokens.actionHover;
+              return workbenchColors.actionHover;
             }
-            return tokens.action;
+            return workbenchColors.action;
           }),
           foregroundColor: WidgetStateProperty.resolveWith((states) {
-            if (states.contains(WidgetState.disabled)) return tokens.disabled;
-            return tokens.onAction;
+            if (states.contains(WidgetState.disabled)) {
+              return workbenchColors.disabled;
+            }
+            return workbenchColors.onAction;
           }),
           overlayColor: const WidgetStatePropertyAll(Colors.transparent),
           textStyle: WidgetStatePropertyAll(textTheme.labelLarge),
-          shape: const WidgetStatePropertyAll(controlShape),
+          shape: WidgetStatePropertyAll(
+            RoundedRectangleBorder(borderRadius: radii.borderSm()),
+          ),
           minimumSize: const WidgetStatePropertyAll(
             Size(64, WorkbenchMetric.technicianControlHeight),
           ),
@@ -171,17 +251,21 @@ class BeenutTheme {
           backgroundColor: WidgetStateProperty.resolveWith((states) {
             if (states.contains(WidgetState.hovered) ||
                 states.contains(WidgetState.pressed)) {
-              return tokens.raised;
+              return workbenchColors.raised;
             }
-            return tokens.surface;
+            return workbenchColors.surface;
           }),
           foregroundColor: WidgetStateProperty.resolveWith((states) {
-            if (states.contains(WidgetState.disabled)) return tokens.disabled;
-            return tokens.ink;
+            if (states.contains(WidgetState.disabled)) {
+              return workbenchColors.disabled;
+            }
+            return workbenchColors.ink;
           }),
           overlayColor: const WidgetStatePropertyAll(Colors.transparent),
           textStyle: WidgetStatePropertyAll(textTheme.labelLarge),
-          shape: const WidgetStatePropertyAll(controlShape),
+          shape: WidgetStatePropertyAll(
+            RoundedRectangleBorder(borderRadius: radii.borderSm()),
+          ),
           minimumSize: const WidgetStatePropertyAll(
             Size(64, WorkbenchMetric.technicianControlHeight),
           ),
@@ -190,28 +274,32 @@ class BeenutTheme {
           ),
           side: WidgetStateProperty.resolveWith((states) {
             if (states.contains(WidgetState.focused)) {
-              return BorderSide(color: tokens.actionFocus, width: 2);
+              return BorderSide(color: workbenchColors.actionFocus, width: 2);
             }
-            return BorderSide(color: tokens.line);
+            return BorderSide(color: workbenchColors.line);
           }),
         ),
       ),
       textButtonTheme: TextButtonThemeData(
         style: ButtonStyle(
           foregroundColor: WidgetStateProperty.resolveWith((states) {
-            if (states.contains(WidgetState.disabled)) return tokens.disabled;
-            return tokens.actionText;
+            if (states.contains(WidgetState.disabled)) {
+              return workbenchColors.disabled;
+            }
+            return workbenchColors.actionText;
           }),
           backgroundColor: WidgetStateProperty.resolveWith((states) {
             if (states.contains(WidgetState.hovered) ||
                 states.contains(WidgetState.pressed)) {
-              return tokens.actionSoft;
+              return workbenchColors.actionSoft;
             }
             return Colors.transparent;
           }),
           overlayColor: const WidgetStatePropertyAll(Colors.transparent),
           textStyle: WidgetStatePropertyAll(textTheme.labelLarge),
-          shape: const WidgetStatePropertyAll(controlShape),
+          shape: WidgetStatePropertyAll(
+            RoundedRectangleBorder(borderRadius: radii.borderSm()),
+          ),
           minimumSize: const WidgetStatePropertyAll(
             Size(40, WorkbenchMetric.technicianControlHeight),
           ),
@@ -219,148 +307,151 @@ class BeenutTheme {
       ),
       iconButtonTheme: IconButtonThemeData(
         style: ButtonStyle(
-          foregroundColor: WidgetStatePropertyAll(tokens.muted),
+          foregroundColor: WidgetStatePropertyAll(workbenchColors.muted),
           backgroundColor: WidgetStateProperty.resolveWith((states) {
             if (states.contains(WidgetState.hovered) ||
                 states.contains(WidgetState.pressed)) {
-              return tokens.raised;
+              return workbenchColors.raised;
             }
             return Colors.transparent;
           }),
           overlayColor: const WidgetStatePropertyAll(Colors.transparent),
-          shape: const WidgetStatePropertyAll(controlShape),
+          shape: WidgetStatePropertyAll(
+            RoundedRectangleBorder(borderRadius: radii.borderSm()),
+          ),
           minimumSize: const WidgetStatePropertyAll(
             Size.square(WorkbenchMetric.technicianHitTarget),
           ),
         ),
       ),
       cardTheme: CardThemeData(
-        color: tokens.surface,
+        color: workbenchColors.surface,
         surfaceTintColor: Colors.transparent,
         elevation: 0,
         shape: RoundedRectangleBorder(
-          borderRadius: radiusPanel,
-          side: BorderSide(color: tokens.line),
+          borderRadius: radii.borderMd(),
+          side: BorderSide(color: workbenchColors.line),
         ),
       ),
       dividerTheme: DividerThemeData(
-        color: tokens.lineSubtle,
+        color: workbenchColors.lineSubtle,
         thickness: 1,
         space: 1,
       ),
       appBarTheme: AppBarTheme(
         elevation: 0,
         scrolledUnderElevation: 0,
-        backgroundColor: tokens.raised,
-        foregroundColor: tokens.ink,
+        backgroundColor: workbenchColors.raised,
+        foregroundColor: workbenchColors.ink,
         surfaceTintColor: Colors.transparent,
         titleTextStyle: textTheme.titleLarge?.copyWith(fontSize: 18),
       ),
       navigationRailTheme: NavigationRailThemeData(
-        backgroundColor: tokens.raised,
-        selectedIconTheme: IconThemeData(color: tokens.actionText, size: 20),
-        unselectedIconTheme: IconThemeData(color: tokens.muted, size: 20),
+        backgroundColor: workbenchColors.raised,
+        selectedIconTheme: IconThemeData(color: workbenchColors.actionText, size: 20),
+        unselectedIconTheme: IconThemeData(color: workbenchColors.muted, size: 20),
         selectedLabelTextStyle: textTheme.labelLarge?.copyWith(
-          color: tokens.actionText,
+          color: workbenchColors.actionText,
         ),
         unselectedLabelTextStyle: textTheme.labelLarge?.copyWith(
-          color: tokens.muted,
+          color: workbenchColors.muted,
           fontWeight: FontWeight.w400,
         ),
-        indicatorColor: tokens.actionSoft,
-        indicatorShape: controlShape,
+        indicatorColor: workbenchColors.actionSoft,
+        indicatorShape: RoundedRectangleBorder(borderRadius: radii.borderSm()),
       ),
       popupMenuTheme: PopupMenuThemeData(
-        color: tokens.raised,
+        color: workbenchColors.raised,
         surfaceTintColor: Colors.transparent,
         elevation: 2,
         shadowColor: brightness == Brightness.light
             ? const Color(0x24171717)
             : const Color(0x5c000000),
         shape: RoundedRectangleBorder(
-          borderRadius: radiusPanel,
-          side: BorderSide(color: tokens.line),
+          borderRadius: radii.borderMd(),
+          side: BorderSide(color: workbenchColors.line),
         ),
-        textStyle: textTheme.labelLarge?.copyWith(color: tokens.ink),
+        textStyle: textTheme.labelLarge?.copyWith(color: workbenchColors.ink),
       ),
       dialogTheme: DialogThemeData(
-        backgroundColor: tokens.surface,
+        backgroundColor: workbenchColors.surface,
         surfaceTintColor: Colors.transparent,
-        elevation: 8,
+        elevation: 0,
         shadowColor: brightness == Brightness.light
             ? const Color(0x33171717)
             : const Color(0x7a000000),
-        shape: panelShape,
+        shape: RoundedRectangleBorder(
+          borderRadius: radii.borderLg(),
+          side: BorderSide(color: workbenchColors.line),
+        ),
         titleTextStyle: textTheme.titleLarge,
-        contentTextStyle: textTheme.bodyMedium?.copyWith(color: tokens.muted),
+        contentTextStyle: textTheme.bodyMedium?.copyWith(color: workbenchColors.muted),
       ),
       inputDecorationTheme: InputDecorationTheme(
         isDense: true,
         filled: true,
-        fillColor: tokens.surface,
+        fillColor: workbenchColors.raised,
         contentPadding: const EdgeInsets.symmetric(
           horizontal: WorkbenchSpace.x3,
           vertical: WorkbenchSpace.x2,
         ),
-        hintStyle: textTheme.bodyMedium?.copyWith(color: tokens.muted),
-        labelStyle: textTheme.labelLarge?.copyWith(color: tokens.muted),
-        border: OutlineInputBorder(
-          borderRadius: radiusSharp,
-          borderSide: BorderSide(color: tokens.line),
+        hintStyle: textTheme.bodyMedium?.copyWith(color: workbenchColors.muted),
+        labelStyle: textTheme.labelLarge?.copyWith(color: workbenchColors.muted),
+        border: UnderlineInputBorder(
+          borderSide: BorderSide(color: workbenchColors.line),
         ),
-        enabledBorder: OutlineInputBorder(
-          borderRadius: radiusSharp,
-          borderSide: BorderSide(color: tokens.line),
+        enabledBorder: UnderlineInputBorder(
+          borderSide: BorderSide(color: workbenchColors.line),
         ),
-        focusedBorder: OutlineInputBorder(
-          borderRadius: radiusSharp,
-          borderSide: BorderSide(color: tokens.actionFocus, width: 2),
+        focusedBorder: UnderlineInputBorder(
+          borderSide: BorderSide(color: workbenchColors.actionFocus, width: 2),
         ),
-        errorBorder: OutlineInputBorder(
-          borderRadius: radiusSharp,
-          borderSide: BorderSide(color: tokens.danger),
+        errorBorder: UnderlineInputBorder(
+          borderSide: BorderSide(color: workbenchColors.danger),
         ),
-        focusedErrorBorder: OutlineInputBorder(
-          borderRadius: radiusSharp,
-          borderSide: BorderSide(color: tokens.danger, width: 2),
+        focusedErrorBorder: UnderlineInputBorder(
+          borderSide: BorderSide(color: workbenchColors.danger, width: 2),
         ),
       ),
       switchTheme: SwitchThemeData(
         thumbColor: WidgetStateProperty.resolveWith((states) {
-          if (states.contains(WidgetState.disabled)) return tokens.disabled;
-          if (states.contains(WidgetState.selected)) return tokens.onAction;
-          return tokens.surface;
+          if (states.contains(WidgetState.disabled)) return workbenchColors.disabled;
+          if (states.contains(WidgetState.selected)) return workbenchColors.onAction;
+          return workbenchColors.surface;
         }),
         trackColor: WidgetStateProperty.resolveWith((states) {
-          if (states.contains(WidgetState.disabled)) return tokens.lineSubtle;
-          if (states.contains(WidgetState.selected)) return tokens.action;
-          return tokens.line;
+          if (states.contains(WidgetState.disabled)) return workbenchColors.lineSubtle;
+          if (states.contains(WidgetState.selected)) return workbenchColors.action;
+          return workbenchColors.line;
         }),
         trackOutlineColor: const WidgetStatePropertyAll(Colors.transparent),
       ),
       snackBarTheme: SnackBarThemeData(
         behavior: SnackBarBehavior.floating,
-        backgroundColor: tokens.raised,
+        backgroundColor: workbenchColors.raised,
         contentTextStyle: textTheme.bodyMedium,
         shape: RoundedRectangleBorder(
-          borderRadius: radiusSharp,
-          side: BorderSide(color: tokens.line),
+          borderRadius: radii.borderSm(),
+          side: BorderSide(color: workbenchColors.line),
         ),
         elevation: 4,
       ),
       tooltipTheme: TooltipThemeData(
-        decoration: BoxDecoration(color: tokens.ink, borderRadius: radiusSharp),
-        textStyle: textTheme.bodySmall?.copyWith(color: tokens.surface),
+        decoration: BoxDecoration(
+          color: workbenchColors.ink,
+          borderRadius: radii.borderXs(),
+        ),
+        textStyle: textTheme.bodySmall?.copyWith(color: workbenchColors.surface),
       ),
       progressIndicatorTheme: ProgressIndicatorThemeData(
-        color: tokens.action,
-        linearTrackColor: tokens.lineSubtle,
-        circularTrackColor: tokens.lineSubtle,
+        color: workbenchColors.action,
+        linearTrackColor: workbenchColors.lineSubtle,
+        circularTrackColor: workbenchColors.lineSubtle,
       ),
     );
   }
 
-  static TextTheme _textTheme(WorkbenchColors tokens) {
+  static TextTheme _textTheme(DlsColors colors) {
     TextStyle style({
       required double size,
       required FontWeight weight,
@@ -368,22 +459,23 @@ class BeenutTheme {
       Color? color,
       double? letterSpacing,
       List<FontFeature>? features,
-    }) => TextStyle(
-      fontFamily: fontFamily,
-      fontFamilyFallback: fontFamilyFallback,
-      fontSize: size,
-      fontWeight: weight,
-      height: height,
-      color: color ?? tokens.ink,
-      letterSpacing: letterSpacing,
-      fontFeatures: features,
-    );
+    }) =>
+        TextStyle(
+          fontFamily: fontFamily,
+          fontFamilyFallback: fontFamilyFallback,
+          fontSize: size,
+          fontWeight: weight,
+          height: height,
+          color: color ?? colors.inkPrimary,
+          letterSpacing: letterSpacing,
+          fontFeatures: features,
+        );
 
     return TextTheme(
       displayLarge: style(
-        size: 96,
+        size: 56,
         weight: FontWeight.w700,
-        height: 1,
+        height: 1.05,
         letterSpacing: -1.5,
         features: const [FontFeature.tabularFigures()],
       ),
@@ -396,13 +488,13 @@ class BeenutTheme {
         size: 11,
         weight: FontWeight.w400,
         height: 1.35,
-        color: tokens.muted,
+        color: colors.inkSecondary,
       ),
       labelSmall: style(
         size: 11,
         weight: FontWeight.w400,
         height: 1.35,
-        color: tokens.muted,
+        color: colors.inkSecondary,
       ),
     );
   }

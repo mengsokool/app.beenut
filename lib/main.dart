@@ -11,7 +11,11 @@ import 'core/theme_controller.dart';
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
   final cameraPermission = await SystemPermissions.currentCameraStatus();
-  await DaemonManager.start();
+  try {
+    await DaemonManager.start();
+  } catch (e, st) {
+    debugPrint('[main] Failed to start daemon: $e\n$st');
+  }
   runApp(BeenutApp(cameraPermission: cameraPermission));
 }
 
@@ -32,6 +36,7 @@ class _BeenutAppState extends State<BeenutApp> with WidgetsBindingObserver {
   void initState() {
     super.initState();
     WidgetsBinding.instance.addObserver(this);
+    ThemeController.currentMode.addListener(_updateSystemTitleBarTheme);
     ThemeController.themeMode.addListener(_updateSystemTitleBarTheme);
     // Call once initially to align on boot
     _updateSystemTitleBarTheme();
@@ -40,18 +45,15 @@ class _BeenutAppState extends State<BeenutApp> with WidgetsBindingObserver {
   @override
   void dispose() {
     ThemeController.themeMode.removeListener(_updateSystemTitleBarTheme);
+    ThemeController.currentMode.removeListener(_updateSystemTitleBarTheme);
     WidgetsBinding.instance.removeObserver(this);
     DaemonManager.stop();
     super.dispose();
   }
 
   void _updateSystemTitleBarTheme() {
-    final mode = ThemeController.themeMode.value;
-    final themeStr = switch (mode) {
-      ThemeMode.light => 'light',
-      ThemeMode.dark => 'dark',
-      ThemeMode.system => 'system',
-    };
+    final mode = ThemeController.currentMode.value;
+    final themeStr = mode.toMapString();
     const MethodChannel('beenut/theme')
         .invokeMethod('updateTheme', themeStr)
         .catchError((_) {});
@@ -67,12 +69,12 @@ class _BeenutAppState extends State<BeenutApp> with WidgetsBindingObserver {
   @override
   Widget build(BuildContext context) {
     return AnimatedBuilder(
-      animation: ThemeController.themeMode,
+      animation: Listenable.merge([ThemeController.themeMode, ThemeController.currentMode]),
       builder: (context, _) {
         return MaterialApp(
           debugShowCheckedModeBanner: false,
           title: 'BeeNut',
-          theme: BeenutTheme.light,
+          theme: ThemeController.currentThemeData,
           darkTheme: BeenutTheme.dark,
           themeMode: ThemeController.themeMode.value,
           builder: (context, child) {

@@ -6,7 +6,9 @@ This section explains the AI processing pipelines, real-time object detection mo
 
 ## 🧠 YOLO Object Detection Pipelines
 
-BeeNut features native deep-learning inferencing through **ONNX Runtime (C++)**, feeding directly from GStreamer pipelines (`/service/src/core/onnx_yolo_engine.cpp`). It supports two primary processing modes:
+BeeNut supports native deep-learning inference through ONNX Runtime or NCNN (C++), feeding directly from the GStreamer pipeline. The selected runtime is reported by the daemon and is a hard capability: if NCNN is not linked into the binary, the runtime is unavailable and no synthetic detections are produced.
+
+NCNN models use a `.param` graph and matching `.bin` weights. Settings expose CPU or Vulkan GPU execution (when Vulkan compute is detected) and 1–32 CPU threads. The default on Raspberry Pi is CPU with two threads.
 
 ### 1. End-to-End NMS-Free YOLO Parsing
 BeeNut can run YOLO-style ONNX models with End-to-End (E2E) heads that generate non-redundant predictions, enabling a streamlined parsing pipeline:

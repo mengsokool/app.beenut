@@ -8,6 +8,7 @@
 #include <QTcpSocket>
 #include <QTimer>
 #include <QVector>
+#include <QHash>
 
 #include <gst/app/gstappsink.h>
 #include <gst/gst.h>
@@ -25,6 +26,8 @@ public:
     bool start();
     bool reload(CameraConfig config);
     bool setAiMaxFps(double fps);
+    bool setAiInputSize(int size);
+    QString pipelineDescription() const;
     bool setLowPowerMode(bool enabled);
     void stop();
     bool isReady() const;
@@ -45,7 +48,6 @@ private slots:
 private:
     QString sourcePipeline() const;
     QString previewCapsDescription() const;
-    QString pipelineDescription() const;
     bool useDmaBufPreview() const;
     bool useIoSurfacePreview() const;
     bool ensurePreviewMapping(int width, int height, int yStride, int uvStride, qsizetype frameSize);
@@ -83,6 +85,8 @@ private:
     int previewSurfaceCursor_ = -1;
     int dmaBufServerFd_ = -1;
     QVector<int> dmaBufClientFds_;
+    QHash<int, QHash<quint64, GstSample*>> dmaBufPending_;
+    QSet<int> dmaBufDisabled_;
     quint64 framesSeen_ = 0;
     quint64 lastFramesSeen_ = 0;
     double captureFps_ = 0.0;

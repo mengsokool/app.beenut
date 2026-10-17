@@ -36,6 +36,7 @@ class PartType {
     required this.image,
     required this.keywords,
     required this.enabled,
+    this.classNames = const {},
   });
 
   factory PartType.fromJson(Map<String, dynamic> json) => PartType(
@@ -47,6 +48,10 @@ class PartType {
         .where((value) => value.trim().isNotEmpty)
         .toList(),
     enabled: json['enabled'] as bool? ?? true,
+    classNames: {
+      for (final entry in _objectMap(json['class_names']).entries)
+        if (entry.value is String) entry.key: entry.value as String,
+    },
   );
 
   final String id;
@@ -54,6 +59,12 @@ class PartType {
   final String image;
   final List<String> keywords;
   final bool enabled;
+  final Map<String, String> classNames;
+
+  String displayNameForClass(String label) {
+    final name = classNames[label]?.trim() ?? '';
+    return name.isEmpty ? label : name;
+  }
 
   Map<String, dynamic> toJson() => {
     'id': id,
@@ -61,6 +72,7 @@ class PartType {
     'image': image,
     'keywords': keywords,
     'enabled': enabled,
+    'class_names': classNames,
   };
 
   PartType copyWith({
@@ -69,12 +81,14 @@ class PartType {
     String? image,
     List<String>? keywords,
     bool? enabled,
+    Map<String, String>? classNames,
   }) => PartType(
     id: id ?? this.id,
     name: name ?? this.name,
     image: image ?? this.image,
     keywords: keywords ?? this.keywords,
     enabled: enabled ?? this.enabled,
+    classNames: classNames ?? this.classNames,
   );
 }
 
@@ -235,6 +249,9 @@ class ModelSettings {
     required this.confidenceThreshold,
     required this.nmsThreshold,
     required this.maxFps,
+    this.ncnnBinPath = '',
+    this.ncnnDevice = 'cpu',
+    this.ncnnThreads = 2,
   });
 
   factory ModelSettings.fromJson(Map<String, dynamic> json) => ModelSettings(
@@ -247,8 +264,14 @@ class ModelSettings {
     confidenceThreshold: _doubleValue(json, 'confidence_threshold', 0.45),
     nmsThreshold: _doubleValue(json, 'nms_threshold', 0.5),
     maxFps: _doubleValue(json, 'max_fps', 10),
+    ncnnBinPath: _stringValue(json, 'ncnn_bin_path', ''),
+    ncnnDevice: _stringValue(json, 'ncnn_device', 'cpu'),
+    ncnnThreads: _intValue(json, 'ncnn_threads', 2),
   );
 
+  final String ncnnBinPath;
+  final String ncnnDevice;
+  final int ncnnThreads;
   final String engine;
   final String modelPath;
   final String hefPath;
@@ -269,9 +292,15 @@ class ModelSettings {
     'confidence_threshold': confidenceThreshold,
     'nms_threshold': nmsThreshold,
     'max_fps': maxFps,
+    'ncnn_bin_path': ncnnBinPath,
+    'ncnn_device': ncnnDevice,
+    'ncnn_threads': ncnnThreads,
   };
 
   ModelSettings copyWith({
+    String? ncnnBinPath,
+    String? ncnnDevice,
+    int? ncnnThreads,
     String? engine,
     String? modelPath,
     String? hefPath,
@@ -282,6 +311,9 @@ class ModelSettings {
     double? nmsThreshold,
     double? maxFps,
   }) => ModelSettings(
+    ncnnBinPath: ncnnBinPath ?? this.ncnnBinPath,
+    ncnnDevice: ncnnDevice ?? this.ncnnDevice,
+    ncnnThreads: ncnnThreads ?? this.ncnnThreads,
     engine: engine ?? this.engine,
     modelPath: modelPath ?? this.modelPath,
     hefPath: hefPath ?? this.hefPath,
@@ -855,6 +887,24 @@ class HardwareCapabilities {
   final Map<String, dynamic> gstreamer;
   final Map<String, dynamic> system;
   final Map<String, dynamic> poweroff;
+
+  HardwareCapabilities copyWith({
+    List<Map<String, dynamic>>? cameras,
+    List<Map<String, dynamic>>? previewTransports,
+    List<Map<String, dynamic>>? aiRuntimes,
+    Map<String, dynamic>? gpio,
+    Map<String, dynamic>? gstreamer,
+    Map<String, dynamic>? system,
+    Map<String, dynamic>? poweroff,
+  }) => HardwareCapabilities(
+    cameras: cameras ?? this.cameras,
+    previewTransports: previewTransports ?? this.previewTransports,
+    aiRuntimes: aiRuntimes ?? this.aiRuntimes,
+    gpio: gpio ?? this.gpio,
+    gstreamer: gstreamer ?? this.gstreamer,
+    system: system ?? this.system,
+    poweroff: poweroff ?? this.poweroff,
+  );
 
   bool get canPoweroff => _boolValue(poweroff, 'available', false);
 

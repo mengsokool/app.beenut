@@ -28,7 +28,7 @@ class ControlButton extends StatelessWidget {
       ),
       shape: WidgetStatePropertyAll(
         RoundedRectangleBorder(
-          borderRadius: BorderRadius.all(Radius.circular(4)),
+          borderRadius: BorderRadius.zero,
         ),
       ),
       foregroundColor: danger ? WidgetStatePropertyAll(scheme.error) : null,

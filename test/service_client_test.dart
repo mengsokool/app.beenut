@@ -7,6 +7,79 @@ import 'package:beenut/core/service_transport.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 void main() {
+  testWidgets(
+    'queues live camera saves until the preceding result is acknowledged',
+    (tester) async {
+      final transport = _FakeTransport();
+      final client = ServiceClient(transport: transport);
+      final original = MachineConfig.empty;
+      client.handleBytesForTest(
+        _line({'type': 'status', 'config': original.toJson(), 'state': {}}),
+      );
+      final first = original.copyWithCameraSettings(
+        original.cameraSettings.copyWith(flipHorizontal: true),
+      );
+      client.saveConfig(first);
+      await tester.pump(const Duration(milliseconds: 220));
+      final latest = first.copyWithCameraSettings(
+        first.cameraSettings.copyWith(flipVertical: true),
+      );
+      client.saveConfig(latest);
+      await tester.pump(const Duration(milliseconds: 220));
+      List<String> saves() => transport.sent
+          .where((line) => decodeLineType(line) == 'saveConfig')
+          .toList();
+      expect(saves(), hasLength(1));
+      client.handleBytesForTest(
+        _line({
+          'type': 'configSaveResult',
+          'result': {'ok': true, 'timestampMs': 1},
+        }),
+      );
+      expect(saves(), hasLength(2));
+      expect((jsonDecode(saves().last) as Map)['config'], latest.toJson());
+      client.handleBytesForTest(
+        _line({'type': 'status', 'config': first.toJson(), 'state': {}}),
+      );
+      expect(client.snapshot.config.cameraSettings.flipVertical, isTrue);
+      client.handleBytesForTest(
+        _line({
+          'type': 'configSaveResult',
+          'result': {'ok': true, 'timestampMs': 2},
+        }),
+      );
+      expect(client.snapshot.config.toJson(), latest.toJson());
+      client.dispose();
+    },
+  );
+
+  testWidgets('a timed out live save rolls back and allows a retry', (
+    tester,
+  ) async {
+    final transport = _FakeTransport();
+    final client = ServiceClient(transport: transport);
+    final original = MachineConfig.empty;
+    client.handleBytesForTest(
+      _line({'type': 'status', 'config': original.toJson(), 'state': {}}),
+    );
+    final edited = original.copyWithCameraSettings(
+      original.cameraSettings.copyWith(flipHorizontal: true),
+    );
+    client.saveConfig(edited);
+    await tester.pump(const Duration(milliseconds: 220));
+    await tester.pump(const Duration(seconds: 10));
+    expect(client.snapshot.saveResult.ok, isFalse);
+    expect(client.snapshot.saveResult.message, contains('No response'));
+    expect(client.snapshot.config.toJson(), original.toJson());
+    client.saveConfig(edited);
+    await tester.pump(const Duration(milliseconds: 220));
+    expect(
+      transport.sent.where((line) => decodeLineType(line) == 'saveConfig'),
+      hasLength(2),
+    );
+    client.dispose();
+  });
+
   test('keeps optimistic config while backend status is still stale', () async {
     final client = ServiceClient();
 

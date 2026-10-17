@@ -1,8 +1,12 @@
 #pragma once
 
+#ifdef ANDROID
+#include "qt_compat.h"
+#else
 #include <QJsonArray>
 #include <QJsonObject>
 #include <QString>
+#endif
 
 namespace beenut {
 

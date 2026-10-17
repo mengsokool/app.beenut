@@ -3,7 +3,7 @@
 #include "counting_tracker.h"
 #include "gpio_controller.h"
 #include "gstreamer_camera.h"
-#include "onnx_yolo_engine.h"
+#include "engine_factory.h"
 #include "service_state.h"
 #include "hardware_discovery.h"
 
@@ -122,7 +122,9 @@ bool cameraChanged(const CameraConfig& a, const CameraConfig& b)
 
 bool modelChanged(const ModelConfig& a, const ModelConfig& b)
 {
-    return a.engine != b.engine || a.modelPath != b.modelPath || a.labelsMode != b.labelsMode ||
+    return a.engine != b.engine || a.modelPath != b.modelPath || a.inputSize != b.inputSize ||
+           a.ncnnBinPath != b.ncnnBinPath || a.ncnnDevice != b.ncnnDevice ||
+           a.ncnnThreads != b.ncnnThreads || a.labelsMode != b.labelsMode ||
            a.labelsPath != b.labelsPath || a.confidenceThreshold != b.confidenceThreshold ||
            a.nmsThreshold != b.nmsThreshold || a.maxFps != b.maxFps;
 }
@@ -144,7 +146,7 @@ bool countingChanged(const CountingConfig& a, const CountingConfig& b)
         const auto& left = a.partTypes.at(i);
         const auto& right = b.partTypes.at(i);
         if (left.id != right.id || left.name != right.name || left.image != right.image ||
-            left.keywords != right.keywords || left.enabled != right.enabled) {
+            left.keywords != right.keywords || left.enabled != right.enabled || left.classNames != right.classNames) {
             return true;
         }
     }
@@ -264,7 +266,7 @@ AppRuntime::AppRuntime(const QString& configPath, const QString& runtimeMode, QO
     gpio_ = std::make_unique<GpioController>(config_.gpio, config_.safeMode);
     counting_ = std::make_unique<CountingTracker>(config_.counting);
     camera_ = std::make_unique<GStreamerCamera>(config_.camera, config_.previewSocket, config_.model.inputSize, config_.model.maxFps);
-    engine_ = std::make_unique<OnnxYoloEngine>(config_.model);
+    engine_ = createInferenceEngine(config_.model);
 
     effectiveAiMaxFps_ = qMax(1.0, config_.model.maxFps);
     state_.effectiveAiMaxFps = effectiveAiMaxFps_;
@@ -370,7 +372,7 @@ void AppRuntime::setupConnections()
         state_.lightOn = gpio_->lightOn();
     });
 
-    QObject::connect(engine_.get(), &OnnxYoloEngine::statusChanged, this, [&](bool ready, const QString& detail, const QStringList& labels) {
+    QObject::connect(engine_.get(), &IInferenceEngine::statusChanged, this, [&](bool ready, const QString& detail, const QStringList& labels) {
         state_.model = ready ? "ready" : "error";
         state_.modelDetail = detail;
         state_.modelLabels = labels;
@@ -383,6 +385,10 @@ void AppRuntime::setupConnections()
         const auto validation = validateConfig(nextConfig, capabilities_);
         control_->broadcastConfigValidation(validation);
         if (validationHasErrors(validation)) {
+            const auto errors = validation.value("errors").toArray();
+            for (const auto& err : errors) {
+                qWarning() << "Validation Error:" << err.toString();
+            }
             qWarning("Rejected config save because validation failed");
             control_->broadcastConfigSaveResult(configSaveResult(false, "Config rejected by backend validation"));
             return;
@@ -434,6 +440,7 @@ void AppRuntime::setupConnections()
             inferenceFrames_ = 0;
             inferenceWindow_.restart();
 
+            camera_->setAiInputSize(config_.model.inputSize);
             QMetaObject::invokeMethod(engine_.get(), "reloadEngine",
                                       Q_ARG(beenut::ModelConfig, config_.model));
         }
@@ -570,10 +577,10 @@ void AppRuntime::setupConnections()
         countTestTimer_.restart();
     });
 
-    QObject::connect(engine_.get(), &OnnxYoloEngine::inferenceFinished, this, [&](const InferenceResult& result) {
+    QObject::connect(engine_.get(), &IInferenceEngine::inferenceFinished, this, [&](const InferenceResult& result) {
         workerBusy_ = false;
 
-        if (state_.safeMode || state_.previewPaused || !isCountingInputPresent()) {
+        if (state_.model != "ready" || state_.safeMode || state_.previewPaused || !isCountingInputPresent()) {
             return;
         }
 
@@ -704,7 +711,7 @@ void AppRuntime::applyThermalPolicy()
 
 void AppRuntime::triggerNextInference()
 {
-    if (state_.safeMode || state_.previewPaused || !isCountingInputPresent()) {
+    if (state_.model != "ready" || state_.safeMode || state_.previewPaused || !isCountingInputPresent()) {
         counting_->reset();
         state_.count = 0;
         state_.detections.clear();

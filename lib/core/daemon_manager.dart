@@ -78,6 +78,12 @@ class DaemonManager {
 
   /// Starts the C++ beenutd daemon.
   static Future<void> start() async {
+    if (Platform.isAndroid) {
+      debugPrint(
+        '[DaemonManager] Skipping daemon launch on Android',
+      );
+      return;
+    }
     if (Platform.environment['BEENUT_NO_LAUNCH_DAEMON'] == '1') {
       debugPrint(
         '[DaemonManager] Skipping daemon launch (BEENUT_NO_LAUNCH_DAEMON is set)',
@@ -87,37 +93,40 @@ class DaemonManager {
     if (_process != null) return;
     _stopping = false;
 
-    final assetsPath = _getAssetsPath();
-    final appSupportDir = Directory(_getApplicationSupportDirectory());
-    if (!appSupportDir.existsSync()) {
-      appSupportDir.createSync(recursive: true);
-    }
-    final logDir = Directory('${appSupportDir.path}/logs');
-    if (!logDir.existsSync()) {
-      logDir.createSync(recursive: true);
-    }
-
-    final configPath = '${appSupportDir.path}/config.json';
-    await _prepareConfigFile(configPath, assetsPath);
-
-    final pidPath = '${appSupportDir.path}/beenutd.pid';
-    _pidPath = pidPath;
-    await _killExistingInstances(pidPath);
-
-    final binaryPath = await _prepareDaemonBinary(assetsPath, appSupportDir);
-    final logPath = '${logDir.path}/beenutd.log';
-    final logSink = File(logPath).openWrite(mode: FileMode.append);
-
-    debugPrint('[DaemonManager] Launching daemon at: $binaryPath');
-    debugPrint('[DaemonManager] Using configuration: $configPath');
-    debugPrint('[DaemonManager] Writing daemon log to: $logPath');
+    IOSink? logSink;
+    String? pidPath;
 
     try {
+      final assetsPath = _getAssetsPath();
+      final appSupportDir = Directory(_getApplicationSupportDirectory());
+      if (!appSupportDir.existsSync()) {
+        appSupportDir.createSync(recursive: true);
+      }
+      final logDir = Directory('${appSupportDir.path}/logs');
+      if (!logDir.existsSync()) {
+        logDir.createSync(recursive: true);
+      }
+
+      final configPath = '${appSupportDir.path}/config.json';
+      await _prepareConfigFile(configPath, assetsPath);
+
+      pidPath = '${appSupportDir.path}/beenutd.pid';
+      _pidPath = pidPath;
+      await _killExistingInstances(pidPath);
+
+      final binaryPath = await _prepareDaemonBinary(assetsPath, appSupportDir);
+      final logPath = '${logDir.path}/beenutd.log';
+      logSink = File(logPath).openWrite(mode: FileMode.append);
+
+      debugPrint('[DaemonManager] Launching daemon at: $binaryPath');
+      debugPrint('[DaemonManager] Using configuration: $configPath');
+      debugPrint('[DaemonManager] Writing daemon log to: $logPath');
+
       var logOpen = true;
       void writeLog(String data) {
         if (!logOpen) return;
         try {
-          logSink.write(data);
+          logSink?.write(data);
         } catch (e) {
           stderr.writeln('[DaemonManager] Failed to write daemon log: $e');
         }
@@ -166,8 +175,10 @@ class DaemonManager {
         debugPrint('[DaemonManager] Daemon exited with code: $code');
         writeLog('[DaemonManager] Daemon exited with code: $code\n');
         logOpen = false;
-        unawaited(logSink.close());
-        _deletePidFile(pidPath);
+        unawaited(logSink?.close());
+        if (pidPath != null) {
+          _deletePidFile(pidPath);
+        }
         _process = null;
         if (!_stopping) {
           debugPrint('[DaemonManager] Unexpected daemon exit. Restarting...');
@@ -176,13 +187,18 @@ class DaemonManager {
       });
     } catch (e) {
       debugPrint('[DaemonManager] Failed to launch daemon: $e');
-      await logSink.close();
-      _deletePidFile(pidPath);
+      if (logSink != null) {
+        await logSink.close();
+      }
+      if (pidPath != null) {
+        _deletePidFile(pidPath);
+      }
     }
   }
 
   /// Stops the beenutd daemon.
   static Future<void> stop() async {
+    if (Platform.isAndroid) return;
     _stopping = true;
     final process = _process;
     if (process == null && _pidPath == null) return;
@@ -261,7 +277,26 @@ class DaemonManager {
     String assetsPath,
     Directory appSupportDir,
   ) async {
-    final sourcePath = _getDaemonBinaryPath(assetsPath);
+    final binDir = Directory('${appSupportDir.path}/bin');
+    if (!binDir.existsSync()) {
+      binDir.createSync(recursive: true);
+    }
+    final targetPath = Platform.isWindows
+        ? '${binDir.path}/beenutd.exe'
+        : '${binDir.path}/beenutd';
+    final target = File(targetPath);
+
+    String sourcePath;
+    try {
+      sourcePath = _getDaemonBinaryPath(assetsPath);
+    } catch (e) {
+      if (target.existsSync()) {
+        debugPrint('[DaemonManager] Using cached daemon binary at: $targetPath');
+        return targetPath;
+      }
+      rethrow;
+    }
+
     final appMacOSDir = Directory(
       File(Platform.resolvedExecutable).parent.path,
     );
@@ -271,15 +306,7 @@ class DaemonManager {
       return sourcePath;
     }
 
-    final binDir = Directory('${appSupportDir.path}/bin');
-    if (!binDir.existsSync()) {
-      binDir.createSync(recursive: true);
-    }
-    final targetPath = Platform.isWindows
-        ? '${binDir.path}/beenutd.exe'
-        : '${binDir.path}/beenutd';
     final source = File(sourcePath);
-    final target = File(targetPath);
 
     var shouldCopy = !target.existsSync();
     if (!shouldCopy) {

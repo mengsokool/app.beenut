@@ -9,6 +9,10 @@ import 'package:flutter/services.dart';
 import '../../core/models.dart';
 import '../../core/i18n.dart';
 import '../../core/theme.dart';
+import '../../core/workbench_tokens.dart';
+import '../../core/service_client.dart';
+import '../../core/android_camera_controller.dart';
+import 'android_camera_preview.dart';
 
 class NativePreviewPane extends StatefulWidget {
   const NativePreviewPane({
@@ -16,6 +20,10 @@ class NativePreviewPane extends StatefulWidget {
     required this.state,
     required this.connected,
     required this.previewSocket,
+    required this.keywords,
+    required this.client,
+    this.classNames = const {},
+    this.cameraController,
     this.aspectRatio = 16 / 9,
   });
 
@@ -23,6 +31,10 @@ class NativePreviewPane extends StatefulWidget {
   final bool connected;
   final String previewSocket;
   final double aspectRatio;
+  final List<String> keywords;
+  final Map<String, String> classNames;
+  final KioskServiceClient client;
+  final AndroidCameraController? cameraController;
 
   @override
   State<NativePreviewPane> createState() => _NativePreviewPaneState();
@@ -75,41 +87,48 @@ class _NativePreviewPaneState extends State<NativePreviewPane> {
           ? Colors.black.withValues(alpha: 0.58)
           : Colors.black.withValues(alpha: 0.92),
       alignment: Alignment.center,
-      child: Column(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          if (isLoading)
-            const SizedBox(
-              width: 72,
-              height: 6,
-              child: LinearProgressIndicator(
-                minHeight: 6,
-                color: Colors.white70,
-                backgroundColor: Colors.white24,
-                borderRadius: BorderRadius.all(Radius.circular(4)),
+      child: LayoutBuilder(
+        builder: (context, size) => SingleChildScrollView(
+          padding: const EdgeInsets.all(12),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              if (size.maxHeight >= 120) ...[
+                if (isLoading)
+                  const SizedBox(
+                    width: 72,
+                    height: 6,
+                    child: LinearProgressIndicator(
+                      minHeight: 6,
+                      color: Colors.white70,
+                      backgroundColor: Colors.white24,
+                      borderRadius: BorderRadius.zero,
+                    ),
+                  )
+                else
+                  Icon(icon, size: 36, color: iconColor),
+                const SizedBox(height: 12),
+              ],
+              Text(
+                title,
+                textAlign: TextAlign.center,
+                style: const TextStyle(
+                  color: Colors.white,
+                  fontSize: 14,
+                  fontWeight: FontWeight.w600,
+                ),
               ),
-            )
-          else
-            Icon(icon, size: 36, color: iconColor),
-          const SizedBox(height: 12),
-          Text(
-            title,
-            style: const TextStyle(
-              color: Colors.white,
-              fontSize: 14,
-              fontWeight: FontWeight.w600,
-            ),
+              if (subtitle.isNotEmpty) ...[
+                const SizedBox(height: 4),
+                Text(
+                  subtitle,
+                  textAlign: TextAlign.center,
+                  style: const TextStyle(color: Colors.white60, fontSize: 11),
+                ),
+              ],
+            ],
           ),
-          const SizedBox(height: 4),
-          Text(
-            subtitle,
-            style: const TextStyle(
-              color: Colors.white60,
-              fontSize: 11,
-              fontWeight: FontWeight.normal,
-            ),
-          ),
-        ],
+        ),
       ),
     );
   }
@@ -123,7 +142,9 @@ class _NativePreviewPaneState extends State<NativePreviewPane> {
     final previewContent = Stack(
       fit: StackFit.expand,
       children: [
-        if ((widget.state.previewTransport == 'shm_nv12' ||
+        if (widget.cameraController != null)
+          AndroidCameraPreview(controller: widget.cameraController!)
+        else if ((widget.state.previewTransport == 'shm_nv12' ||
                 widget.state.previewTransport == 'iosurface_nv12' ||
                 widget.state.previewTransport == 'dmabuf_egl') &&
             widget.state.previewUrl.isNotEmpty)
@@ -133,9 +154,11 @@ class _NativePreviewPaneState extends State<NativePreviewPane> {
           MjpegPreview(url: widget.state.previewUrl),
 
         AnimatedDetectionsOverlay(
+          classNames: widget.classNames,
           detections: widget.state.previewPaused
               ? const []
               : widget.state.detections,
+          keywords: widget.keywords,
           enabled:
               widget.connected &&
               !hasCameraFault &&
@@ -151,8 +174,15 @@ class _NativePreviewPaneState extends State<NativePreviewPane> {
     return Center(
       child: AspectRatio(
         aspectRatio: widget.aspectRatio,
-        child: ClipRRect(
-          borderRadius: BeenutTheme.radiusPanel,
+        child: Container(
+          decoration: BoxDecoration(
+            borderRadius: BeenutTheme.radiusPanel,
+            border: Border.all(
+              color: context.workbenchColors.lineSubtle,
+              width: 1,
+            ),
+          ),
+          clipBehavior: Clip.antiAlias,
           child: ColoredBox(
             color: BeenutTheme.previewBlack,
             child: Stack(
@@ -168,13 +198,13 @@ class _NativePreviewPaneState extends State<NativePreviewPane> {
                     child: RawImage(image: cachedImage, fit: BoxFit.cover),
                   ),
 
-                // 3. Status text overlays
+                // 3. Status text overlays (shown only during pause or error/fault)
                 if (widget.state.previewPaused)
                   _buildOverlay(
                     icon: Icons.pause_outlined,
                     iconColor: Colors.white,
                     title: I18n.t(context, 'suspended'),
-                    subtitle: I18n.t(context, 'video_paused_save_power'),
+                    subtitle: '',
                     translucent: true,
                   )
                 else if (!widget.connected)
@@ -212,6 +242,8 @@ class ShmNv12Preview extends StatefulWidget {
 class _ShmNv12PreviewState extends State<ShmNv12Preview> {
   static const MethodChannel _channel = MethodChannel('beenut/preview_texture');
   int? _textureId;
+  String? _textureError;
+  int _requestGeneration = 0;
 
   @override
   void initState() {
@@ -229,11 +261,13 @@ class _ShmNv12PreviewState extends State<ShmNv12Preview> {
   }
 
   Future<void> _createTexture() async {
+    final generation = ++_requestGeneration;
+    if (mounted) setState(() => _textureError = null);
     try {
       final textureId = await _channel.invokeMethod<int>('create', {
         'path': widget.path,
       });
-      if (!mounted) {
+      if (!mounted || generation != _requestGeneration) {
         if (textureId != null) {
           await _channel.invokeMethod<void>('dispose', {
             'textureId': textureId,
@@ -241,13 +275,31 @@ class _ShmNv12PreviewState extends State<ShmNv12Preview> {
         }
         return;
       }
-      setState(() => _textureId = textureId);
-    } catch (_) {
-      if (mounted) setState(() => _textureId = null);
+      setState(() {
+        _textureId = textureId;
+        _textureError = textureId == null
+            ? I18n.t(context, 'preview_plugin_error')
+            : null;
+      });
+    } on MissingPluginException {
+      if (mounted && generation == _requestGeneration) {
+        setState(
+          () => _textureError = I18n.t(context, 'preview_plugin_missing'),
+        );
+      }
+    } catch (error) {
+      if (mounted && generation == _requestGeneration) {
+        setState(
+          () => _textureError = error is PlatformException
+              ? (error.message ?? error.code)
+              : error.toString(),
+        );
+      }
     }
   }
 
   Future<void> _disposeTexture() async {
+    ++_requestGeneration;
     final textureId = _textureId;
     _textureId = null;
     if (textureId == null) return;
@@ -261,6 +313,32 @@ class _ShmNv12PreviewState extends State<ShmNv12Preview> {
   @override
   Widget build(BuildContext context) {
     final textureId = _textureId;
+    if (_textureError != null) {
+      return Center(
+        child: Padding(
+          padding: const EdgeInsets.all(16),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Text(
+                I18n.t(context, 'preview_plugin_error'),
+                style: const TextStyle(color: Colors.white),
+              ),
+              const SizedBox(height: 8),
+              Text(
+                _textureError!,
+                textAlign: TextAlign.center,
+                style: const TextStyle(color: Colors.white70, fontSize: 12),
+              ),
+              TextButton(
+                onPressed: _createTexture,
+                child: Text(I18n.t(context, 'preview_plugin_retry')),
+              ),
+            ],
+          ),
+        ),
+      );
+    }
     if (textureId == null) return const SizedBox.expand();
     return Texture(textureId: textureId);
   }
@@ -459,7 +537,7 @@ class _MjpegStatus extends StatelessWidget {
               minHeight: 6,
               color: Colors.white70,
               backgroundColor: Colors.white24,
-              borderRadius: BorderRadius.all(Radius.circular(4)),
+              borderRadius: BorderRadius.zero,
             ),
           ),
           const SizedBox(height: 12),
@@ -482,11 +560,15 @@ class AnimatedDetectionsOverlay extends StatefulWidget {
   const AnimatedDetectionsOverlay({
     super.key,
     required this.detections,
+    required this.keywords,
     required this.enabled,
+    this.classNames = const {},
   });
 
   final List<Detection> detections;
+  final List<String> keywords;
   final bool enabled;
+  final Map<String, String> classNames;
 
   @override
   State<AnimatedDetectionsOverlay> createState() =>
@@ -697,6 +779,8 @@ class _AnimatedDetectionsOverlayState extends State<AnimatedDetectionsOverlay>
           child: CustomPaint(
             painter: _AnimatedDetectionsPainter(
               _boxes,
+              keywords: widget.keywords,
+              classNames: widget.classNames,
               inspectionMode: _inspectionMode,
               focusedBoxId: _focusedBoxId,
             ),
@@ -727,7 +811,6 @@ class _AnimatedBox {
   static int _nextId = 0;
   static int nextId() => _nextId++;
 
-  final int id;
   final String label;
   double currentX;
   double currentY;
@@ -738,6 +821,7 @@ class _AnimatedBox {
   double targetW;
   double targetH;
   double confidence;
+  final int id;
   double currentOpacity;
   double targetOpacity;
   bool matched = false;
@@ -746,13 +830,43 @@ class _AnimatedBox {
 class _AnimatedDetectionsPainter extends CustomPainter {
   _AnimatedDetectionsPainter(
     this.boxes, {
+    required this.keywords,
     required this.inspectionMode,
     required this.focusedBoxId,
+    required this.classNames,
   });
 
   final List<_AnimatedBox> boxes;
+  final List<String> keywords;
   final bool inspectionMode;
   final int? focusedBoxId;
+  final Map<String, String> classNames;
+
+  String _labelForBox(_AnimatedBox box) {
+    final name = classNames[box.label]?.trim() ?? '';
+    return '${name.isEmpty ? box.label : name} ${(box.confidence * 100).round()}%';
+  }
+
+  @override
+  SemanticsBuilderCallback get semanticsBuilder =>
+      (size) => [
+        if (inspectionMode)
+          for (final box in boxes)
+            if (box.currentOpacity > 0.01 &&
+                (focusedBoxId == null || focusedBoxId == box.id))
+              CustomPainterSemantics(
+                rect: Rect.fromLTWH(
+                  box.currentX * size.width,
+                  box.currentY * size.height,
+                  box.currentW * size.width,
+                  box.currentH * size.height,
+                ).intersect(Offset.zero & size),
+                properties: SemanticsProperties(
+                  label: _labelForBox(box),
+                  textDirection: TextDirection.ltr,
+                ),
+              ),
+      ];
 
   @override
   void paint(Canvas canvas, Size size) {
@@ -785,8 +899,9 @@ class _AnimatedDetectionsPainter extends CustomPainter {
 
     final emphasis = focused ? 1.0 : (focusedBoxId == null ? 1.0 : 0.42);
     final opacity = (box.currentOpacity * emphasis).clamp(0.0, 1.0);
+    final color = BeenutTheme.getLabelColor(box.label, keywords);
     final boxPaint = Paint()
-      ..color = const Color(0xff22d3ee).withValues(alpha: opacity)
+      ..color = color.withValues(alpha: opacity)
       ..style = PaintingStyle.stroke
       ..strokeWidth = focused ? 3.0 : 1.5;
 
@@ -797,10 +912,7 @@ class _AnimatedDetectionsPainter extends CustomPainter {
       box.currentH * size.height,
     );
 
-    canvas.drawRRect(
-      RRect.fromRectAndRadius(rect, const Radius.circular(2)),
-      boxPaint,
-    );
+    canvas.drawRRect(RRect.fromRectAndRadius(rect, Radius.zero), boxPaint);
 
     if (inspectionMode && (focusedBoxId == null || focused)) {
       _paintLabel(canvas, size, rect, box, focused: focused);
@@ -814,7 +926,7 @@ class _AnimatedDetectionsPainter extends CustomPainter {
     _AnimatedBox box, {
     required bool focused,
   }) {
-    final label = '${box.label} ${(box.confidence * 100).round()}%';
+    final label = _labelForBox(box);
     final opacity = box.currentOpacity.clamp(0.0, 1.0);
     final textSpan = TextSpan(
       text: label,
@@ -822,6 +934,8 @@ class _AnimatedDetectionsPainter extends CustomPainter {
         color: Colors.white.withValues(alpha: opacity),
         fontSize: focused ? 14 : 11,
         fontWeight: FontWeight.w500,
+        fontFamily: BeenutTheme.fontFamily,
+        fontFamilyFallback: BeenutTheme.fontFamilyFallback,
       ),
     );
     final textPainter = TextPainter(
@@ -852,7 +966,7 @@ class _AnimatedDetectionsPainter extends CustomPainter {
       )
       ..style = PaintingStyle.fill;
     canvas.drawRRect(
-      RRect.fromRectAndRadius(labelRect, const Radius.circular(3)),
+      RRect.fromRectAndRadius(labelRect, Radius.zero),
       backgroundPaint,
     );
     textPainter.paint(

@@ -1,4 +1,6 @@
 import 'dart:async';
+import 'dart:convert';
+import 'dart:io';
 
 import 'package:flutter/material.dart';
 import '../../../core/maintenance_actions.dart';
@@ -72,6 +74,27 @@ class _HardwareTestTabState extends State<HardwareTestTab> {
     });
     if (result.ok) {
       widget.client.refreshCapabilities();
+
+      // Force reload the config in-memory by reading the newly restored config.json
+      // and saving it via the ServiceClient socket connection.
+      try {
+        final appSupportDir = Directory(
+          MaintenanceActions.getApplicationSupportDirectory(),
+        );
+        final configFile = File('${appSupportDir.path}/config.json');
+        if (configFile.existsSync()) {
+          final content = configFile.readAsStringSync();
+          final json = jsonDecode(content);
+          if (json is Map<String, dynamic>) {
+            final newConfig = MachineConfig.fromJson(json);
+            widget.client.saveConfig(newConfig);
+          }
+        }
+      } catch (e) {
+        debugPrint(
+          '[TestTab] Failed to force-reload config after factory reset: $e',
+        );
+      }
     }
   }
 
