@@ -122,7 +122,7 @@ class StepperControl extends StatelessWidget {
                 child: Text(
                   value,
                   style: BeenutTheme.dataTextStyle(context).copyWith(
-                    fontFamily: 'IBMPlexSans',
+                    fontFamily: BeenutTheme.fontFamily,
                     fontSize: 18,
                     fontWeight: FontWeight.w500,
                     color: enabled ? tokens.ink : tokens.disabled,

@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import '../../core/theme.dart';
 import '../../core/i18n.dart';
 import 'number_editor.dart';
 
@@ -103,7 +104,7 @@ class _InlineNumberControlState extends State<InlineNumberControl> {
                 ),
               ],
               style: const TextStyle(
-                fontFamily: 'IBMPlexSans',
+                fontFamily: BeenutTheme.fontFamily,
                 fontSize: 18,
                 fontFeatures: [FontFeature.tabularFigures()],
               ),

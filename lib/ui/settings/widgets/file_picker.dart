@@ -1021,7 +1021,7 @@ class _FilePickerDialogState extends State<FilePickerDialog> {
                                       child: Text(
                                         _formatSize(sizeBytes),
                                         style: TextStyle(
-                                          fontFamily: 'monospace',
+                                          fontFamily: BeenutTheme.fontFamily,
                                           fontSize: 9,
                                           color: scheme.onSurfaceVariant,
                                         ),

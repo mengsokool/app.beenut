@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import '../../core/i18n.dart';
+import '../../core/theme.dart';
 import '../../core/workbench_tokens.dart';
 import 'settings_experience.dart';
 
@@ -125,7 +126,7 @@ class _NumberEditorState extends State<_NumberEditor> {
         ),
       ],
       style: const TextStyle(
-        fontFamily: 'IBMPlexSans',
+        fontFamily: BeenutTheme.fontFamily,
         fontSize: 28,
         fontFeatures: [FontFeature.tabularFigures()],
       ),
@@ -185,7 +186,7 @@ class _NumberEditorState extends State<_NumberEditor> {
                         child: Text(
                           character,
                           style: const TextStyle(
-                            fontFamily: 'IBMPlexSans',
+                            fontFamily: BeenutTheme.fontFamily,
                             fontSize: 20,
                           ),
                         ),

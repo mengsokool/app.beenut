@@ -658,8 +658,8 @@ class DlsThemeExtension extends ThemeExtension<DlsThemeExtension> {
 
 /// DLS Typography Scale definitions.
 abstract final class DlsTypography {
-  static const String fontFamily = 'IBMPlexSansThaiLooped';
-  static const List<String> fontFamilyFallback = ['IBMPlexSans'];
+  static const String fontFamily = 'GoogleSans';
+  static const List<String> fontFamilyFallback = <String>[];
 
   static TextStyle displayHero({Color? color}) => TextStyle(
     fontFamily: fontFamily,

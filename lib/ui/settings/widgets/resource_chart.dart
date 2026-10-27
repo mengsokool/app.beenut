@@ -277,7 +277,7 @@ class _CpuChartPainter extends CustomPainter {
       color: labelColor.withValues(alpha: 0.7),
       fontSize: 9.5,
       fontWeight: FontWeight.w500,
-      fontFamily: 'monospace',
+      fontFamily: BeenutTheme.fontFamily,
     );
 
     const int gridRows = 4;
@@ -429,7 +429,7 @@ class _RamChartPainter extends CustomPainter {
       color: labelColor.withValues(alpha: 0.7),
       fontSize: 9.5,
       fontWeight: FontWeight.w500,
-      fontFamily: 'monospace',
+      fontFamily: BeenutTheme.fontFamily,
     );
 
     const int gridRows = 4;

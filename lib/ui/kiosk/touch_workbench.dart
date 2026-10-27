@@ -5,6 +5,7 @@ import 'package:flutter/material.dart';
 
 import '../../core/i18n.dart';
 import '../../core/models.dart';
+import '../../core/theme.dart';
 import '../../core/workbench_tokens.dart';
 import '../components/part_selector_card.dart';
 
@@ -263,7 +264,7 @@ class TouchWorkbench extends StatelessWidget {
                       key: const ValueKey('touch-count-value'),
                       style: TextStyle(
                         color: colors.ink,
-                        fontFamily: 'IBMPlexSans',
+                        fontFamily: BeenutTheme.fontFamily,
                         fontSize: compact ? 88 : 112,
                         fontWeight: FontWeight.w600,
                         height: 1,
@@ -340,7 +341,7 @@ class TouchWorkbench extends StatelessWidget {
             key: ValueKey('class-count-$keyword'),
             style: TextStyle(
               color: colors.ink,
-              fontFamily: 'IBMPlexSans',
+              fontFamily: BeenutTheme.fontFamily,
               fontSize: 32,
               fontWeight: FontWeight.w600,
               fontFeatures: const [FontFeature.tabularFigures()],

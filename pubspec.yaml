@@ -19,7 +19,7 @@ publish_to: 'none' # Remove this line if you wish to publish to pub.dev
 # https://developer.apple.com/library/archive/documentation/General/Reference/InfoPlistKeyReference/Articles/CoreFoundationKeys.html
 # In Windows, build-name is used as the major, minor, and patch parts
 # of the product and file versions while build-number is used as the build suffix.
-version: 0.2.3-rc.1+6
+version: 0.2.3-rc.2+7
 
 environment:
   sdk: ^3.12.2
@@ -65,26 +65,16 @@ flutter:
     - assets/images/logo.png
     - assets/images/Nut.png
     - assets/images/Washer.png
-    - assets/fonts/OFL-ibmplexsansthailooped.txt
-    - assets/fonts/OFL-ibmplexsans.txt
+    - assets/fonts/OFL-GoogleSans.txt
     - assets/models/yolo26n.onnx
     - assets/models/labels.txt
     - service/config/default.json
 
   fonts:
-    - family: IBMPlexSansThaiLooped
+    - family: GoogleSans
       fonts:
-        - asset: assets/fonts/IBMPlexSansThaiLooped-Regular.ttf
+        - asset: assets/fonts/GoogleSans-Variable.ttf
           weight: 400
-        - asset: assets/fonts/IBMPlexSansThaiLooped-Medium.ttf
-          weight: 500
-        - asset: assets/fonts/IBMPlexSansThaiLooped-SemiBold.ttf
-          weight: 600
-        - asset: assets/fonts/IBMPlexSansThaiLooped-Bold.ttf
-          weight: 700
-    - family: IBMPlexSans
-      fonts:
-        - asset: assets/fonts/IBMPlexSans.ttf
 
   # For details regarding adding assets from package dependencies, see
   # https://flutter.dev/to/asset-from-package

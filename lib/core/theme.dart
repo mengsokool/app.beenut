@@ -15,8 +15,8 @@ class BeenutTheme {
   static const warning = Color(0xff9a3412);
   static const danger = Color(0xffb91c1c);
   static const previewBlack = Color(0xff09090b);
-  static const fontFamily = 'IBMPlexSansThaiLooped';
-  static const fontFamilyFallback = ['IBMPlexSans'];
+  static const fontFamily = 'GoogleSans';
+  static const fontFamilyFallback = <String>[];
 
   static const radiusSharp = BorderRadius.all(
     Radius.circular(WorkbenchRadius.control),
@@ -90,7 +90,7 @@ class BeenutTheme {
   static Color dangerColor(BuildContext context) => colors(context).danger;
 
   static TextStyle dataTextStyle(BuildContext context) => TextStyle(
-    fontFamily: 'monospace',
+    fontFamily: fontFamily,
     fontSize: 11.5,
     fontWeight: FontWeight.w400,
     height: 1.4,

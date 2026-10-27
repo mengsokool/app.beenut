@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import '../../core/theme.dart';
 import '../../core/i18n.dart';
 import 'virtual_keyboard.dart';
 
@@ -46,7 +47,7 @@ class _InlineTextControlState extends State<InlineTextControl> {
     enabled: widget.enabled,
     maxLines: 3,
     minLines: 1,
-    style: const TextStyle(fontFamily: 'IBMPlexSans', fontSize: 14),
+    style: const TextStyle(fontFamily: BeenutTheme.fontFamily, fontSize: 14),
     onChanged: widget.onChanged,
     decoration: InputDecoration(
       hintText: I18n.t(context, 'no_file_selected'),
