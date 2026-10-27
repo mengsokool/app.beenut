@@ -410,6 +410,20 @@ void testNcnnConfigAndValidation()
     expect(validation.value("errors").toArray().contains("NCNN threads must be between 1 and 32"), "zero threads must be rejected");
 }
 
+void testMissingOnnxModelDoesNotBlockConfig()
+{
+    beenut::AppConfig config;
+    config.camera.source = "mock";
+    config.model.engine = "onnx";
+    config.model.modelPath.clear();
+    const auto caps = beenut::discoverCapabilities(config);
+    const auto validation = beenut::validateConfig(config, caps);
+    expect(validation.value("errors").toArray().isEmpty(), "missing ONNX model must not block configuration");
+    expect(!validation.value("warnings").toArray().isEmpty(), "missing ONNX model should be reported");
+    auto engine = beenut::createInferenceEngine(config.model);
+    expect(!engine->isReady(), "missing model must not enable inference");
+}
+
 void testNcnnOutputDecoding()
 {
     beenut::ModelConfig config;
@@ -513,6 +527,7 @@ int main(int argc, char** argv)
     testPoweroffCapabilityOverride();
     testNcnnRuntimeAndSwitching();
     testNcnnConfigAndValidation();
+    testMissingOnnxModelDoesNotBlockConfig();
     testNcnnOutputDecoding();
     testNcnnLinkedInference();
     testCameraPipelineDropsBeforeConversion();

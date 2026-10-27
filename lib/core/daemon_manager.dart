@@ -79,9 +79,7 @@ class DaemonManager {
   /// Starts the C++ beenutd daemon.
   static Future<void> start() async {
     if (Platform.isAndroid) {
-      debugPrint(
-        '[DaemonManager] Skipping daemon launch on Android',
-      );
+      debugPrint('[DaemonManager] Skipping daemon launch on Android');
       return;
     }
     if (Platform.environment['BEENUT_NO_LAUNCH_DAEMON'] == '1') {
@@ -291,7 +289,9 @@ class DaemonManager {
       sourcePath = _getDaemonBinaryPath(assetsPath);
     } catch (e) {
       if (target.existsSync()) {
-        debugPrint('[DaemonManager] Using cached daemon binary at: $targetPath');
+        debugPrint(
+          '[DaemonManager] Using cached daemon binary at: $targetPath',
+        );
         return targetPath;
       }
       rethrow;
@@ -392,11 +392,34 @@ class DaemonManager {
         camera['preview_transport'] = 'iosurface_nv12';
       }
     } else if (Platform.isLinux) {
-      camera['preview_transport'] ??= 'auto';
+      final board = File('/proc/device-tree/model');
+      final isPi =
+          board.existsSync() &&
+          (await board.readAsString()).toLowerCase().contains('raspberry pi');
+      camera.addAll(resolveLinuxCameraConfig(camera, isRaspberryPi: isPi));
     }
     configMap['camera'] = camera;
 
     await _writeJsonFileAtomically(configFile, configMap);
+  }
+
+  @visibleForTesting
+  static Map<String, dynamic> resolveLinuxCameraConfig(
+    Map<String, dynamic> original, {
+    required bool isRaspberryPi,
+  }) {
+    final camera = Map<String, dynamic>.from(original);
+    if (camera['source'] == 'avfoundation' ||
+        camera['source'] == 'dshow' ||
+        camera['source'] == 'directshow') {
+      camera['source'] = isRaspberryPi ? 'libcamera' : 'auto';
+      camera['device'] = '';
+    }
+    if (camera['preview_transport'] == null ||
+        camera['preview_transport'] == 'iosurface_nv12') {
+      camera['preview_transport'] = 'shm_nv12';
+    }
+    return camera;
   }
 
   @visibleForTesting

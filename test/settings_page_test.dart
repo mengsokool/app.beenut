@@ -213,13 +213,13 @@ void main() {
         saveResult: const ConfigSaveResult(
           ok: false,
           message: 'Camera settings rejected',
-          detail: '',
+          detail: 'Camera source is unavailable',
           timestampMs: 1,
         ),
       );
       await tester.pumpAndSettle();
       expect(tester.widget<WorkbenchSwitch>(horizontal).value, isFalse);
-      expect(find.text('Camera settings rejected'), findsOneWidget);
+      expect(find.text('Camera source is unavailable'), findsOneWidget);
       expect(find.byKey(const ValueKey('settings-apply-bar')), findsNothing);
       live.value = live.value.copyWith(connected: false);
       await tester.pumpAndSettle();

@@ -390,7 +390,9 @@ void AppRuntime::setupConnections()
                 qWarning() << "Validation Error:" << err.toString();
             }
             qWarning("Rejected config save because validation failed");
-            control_->broadcastConfigSaveResult(configSaveResult(false, "Config rejected by backend validation"));
+            QStringList details;
+            for (const auto& error : errors) details.append(error.toString());
+            control_->broadcastConfigSaveResult(configSaveResult(false, "Config rejected by backend validation", details.join("\n")));
             return;
         }
         const auto needsCameraReload = cameraChanged(config_.camera, nextConfig.camera);

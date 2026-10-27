@@ -4,6 +4,43 @@ import 'package:beenut/core/daemon_manager.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 void main() {
+  test(
+    'Linux repairs foreign camera defaults without changing Linux choices',
+    () {
+      final old = {
+        'source': 'avfoundation',
+        'device': '0',
+        'preview_transport': 'iosurface_nv12',
+        'fps': 15,
+      };
+      final pi = DaemonManager.resolveLinuxCameraConfig(
+        old,
+        isRaspberryPi: true,
+      );
+      expect(pi, {
+        'source': 'libcamera',
+        'device': '',
+        'preview_transport': 'shm_nv12',
+        'fps': 15,
+      });
+      final desktop = DaemonManager.resolveLinuxCameraConfig(
+        old,
+        isRaspberryPi: false,
+      );
+      expect(desktop['source'], 'auto');
+      expect(desktop['device'], '');
+      final existing = {
+        'source': 'v4l2',
+        'device': '/dev/video3',
+        'preview_transport': 'shm_nv12',
+      };
+      expect(
+        DaemonManager.resolveLinuxCameraConfig(existing, isRaspberryPi: true),
+        existing,
+      );
+      expect(old['source'], 'avfoundation');
+    },
+  );
   test('linux daemon resolution uses built service binary', () {
     final tempDir = Directory.systemTemp.createTempSync('beenut-daemon-test-');
     addTearDown(() => tempDir.deleteSync(recursive: true));

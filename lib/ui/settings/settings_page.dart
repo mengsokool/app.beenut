@@ -138,9 +138,9 @@ class _SettingsPageState extends State<SettingsPage> {
       '${result.timestampMs}|${result.ok}|${result.message}|${result.detail}';
   void _showConfigSaveFailure(ConfigSaveResult result) {
     final scheme = Theme.of(context).colorScheme;
-    final message = result.message.trim().isNotEmpty
-        ? result.message
-        : result.detail;
+    final message = result.detail.trim().isNotEmpty
+        ? result.detail
+        : result.message;
     final foreground = scheme.onErrorContainer;
     ScaffoldMessenger.of(context)
       ..hideCurrentSnackBar()

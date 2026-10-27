@@ -5,6 +5,13 @@ All notable changes to BeeNut will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project follows [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [v0.2.1] - 2026-10-27
+
+### Fixed
+- Correct incompatible macOS and Windows camera defaults on Linux, including existing desktop configurations.
+- Show backend validation details when a configuration save is rejected.
+- Keep ONNX available for configuration before a model has been selected; inference remains unavailable until a model is loaded.
+
 ## [v0.1.0] - 2026-07-09
 
 ### Added
