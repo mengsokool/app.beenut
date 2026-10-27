@@ -27,7 +27,7 @@ TTYVTDisallocate=yes
 
 ExecStartPre=+/usr/bin/chvt 7
 ExecStartPre=/opt/beenut/scripts/wait-for-socket.sh /tmp/beenutd.sock
-ExecStart=/usr/bin/flutter-pi --release /opt/beenut/flutter-pi
+ExecStart=/opt/beenut/flutter-pi/flutter-pi --release /opt/beenut/flutter-pi
 Restart=always
 RestartSec=5
 TimeoutStopSec=5

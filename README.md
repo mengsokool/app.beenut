@@ -159,6 +159,14 @@ scripts/build-debian.sh
 
 Raspberry Pi appliance builds use the `appliance-pi` profile and a `flutter-pi` bundle:
 
+The release workflow builds a separate `beenut-pi_VERSION_arm64.deb`, including
+the Flutter engine and a flutter-pi executable with BeeNut's preview bridge.
+Select it with `BEENUT_PROFILE=appliance-pi`; desktop and Pi packages share the
+same Debian package identity so an upgrade replaces the installed flavor.
+Test a new package on Raspberry Pi OS Lite with a camera and display before
+deploying. The appliance profile changes the system boot and may restrict remote
+access; keep a recovery path available.
+
 ```bash
 BEENUT_PACKAGE_PROFILE=appliance-pi \
 BEENUT_KIOSK_MODE=flutter-pi \

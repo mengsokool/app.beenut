@@ -25,6 +25,11 @@ on:
         type: boolean
         required: true
         default: true
+      publish_release:
+        description: "Publish release after selected builds"
+        type: boolean
+        required: true
+        default: true
 
 permissions:
   contents: write
@@ -127,7 +132,7 @@ jobs:
       - name: Set up Flutter manually (ARM64)
         shell: bash
         run: |
-          git clone https://github.com/flutter/flutter.git -b stable --depth 1
+          git clone https://github.com/flutter/flutter.git -b 3.44.4 --depth 1
           echo "$GITHUB_WORKSPACE/flutter/bin" >> $GITHUB_PATH
 
       - name: Install Linux build dependencies
@@ -180,6 +185,36 @@ jobs:
           ONNXRUNTIME_LIB_DIR="$ONNXRUNTIME_ROOT/lib" \
           OUTPUT_DIR="$PWD/dist" \
           scripts/build-debian.sh
+
+      - name: Build BeeNut flutter-pi runtime
+        shell: bash
+        run: |
+          sudo apt-get install -y libgl1-mesa-dev libgles2-mesa-dev libegl1-mesa-dev \
+            libdrm-dev libgbm-dev libsystemd-dev libinput-dev libudev-dev libxkbcommon-dev
+          git clone https://github.com/ardera/flutter-pi.git "$RUNNER_TEMP/flutter-pi"
+          git -C "$RUNNER_TEMP/flutter-pi" checkout 8b86c52a004ec2ca7f98a65e5079219679002c61
+          git -C "$RUNNER_TEMP/flutter-pi" submodule update --init --recursive
+          flutter-pi/beenut_preview_bridge/install-flutter-pi-bridge.sh "$RUNNER_TEMP/flutter-pi"
+          cmake -S "$RUNNER_TEMP/flutter-pi" -B "$RUNNER_TEMP/flutter-pi/build" \
+            -DCMAKE_BUILD_TYPE=Release -DBUILD_GSTREAMER_VIDEO_PLAYER_PLUGIN=OFF \
+            -DBUILD_GSTREAMER_AUDIO_PLAYER_PLUGIN=OFF -DTRY_ENABLE_OPENGL=OFF
+          cmake --build "$RUNNER_TEMP/flutter-pi/build" -j 3
+
+      - name: Build flutter-pi release bundle
+        shell: bash
+        run: |
+          flutter pub global activate flutterpi_tool 0.12.0
+          "$HOME/.pub-cache/bin/flutterpi_tool" build --arch=arm64 --cpu=generic --release \
+            --flutterpi-binary="$RUNNER_TEMP/flutter-pi/build/flutter-pi"
+          BUNDLE="$(find "$PWD/build/flutter-pi" -name app.so -type f -print -quit | xargs dirname)"
+          test -x "$BUNDLE/flutter-pi"
+          test -f "$BUNDLE/libflutter_engine.so"
+          BEENUT_VERSION="$BEENUT_VERSION" BEENUT_ARCH=arm64 \
+          BEENUT_PACKAGE_PROFILE=appliance-pi BEENUT_KIOSK_MODE=flutter-pi \
+          BEENUTD_BIN="$PWD/service/build/src/beenutd/beenutd" \
+          FLUTTER_PI_BUNDLE_DIR="$BUNDLE" ONNXRUNTIME_LIB_DIR="$ONNXRUNTIME_ROOT/lib" \
+          OUTPUT_DIR="$PWD/dist/pi" scripts/build-debian.sh
+          mv "dist/pi/beenut_${BEENUT_VERSION}_arm64.deb" "dist/beenut-pi_${BEENUT_VERSION}_arm64.deb"
 
       - name: Upload Linux artifacts
         uses: actions/upload-artifact@v4
@@ -243,6 +278,7 @@ jobs:
       - macos-app
     if: |
       always() &&
+      (github.event_name == 'push' || github.event.inputs.publish_release == 'true') &&
       !contains(needs.*.result, 'failure') &&
       !contains(needs.*.result, 'cancelled')
     steps:
@@ -275,7 +311,7 @@ jobs:
           cp scripts/install-linux.sh "dist/install-linux.sh"
           chmod 0755 "dist/install-linux.sh"
           BEENUT_VERSION="$BEENUT_VERSION" OUTPUT_DIR="$PWD/dist" \
-            scripts/create-release-manifest.sh dist/*.deb dist/*.zip dist/install-linux.sh
+            scripts/create-release-manifest.sh dist/*.deb dist/*.zip dist/*.dmg dist/install-linux.sh
 
       - name: Publish release
         uses: softprops/action-gh-release@v2

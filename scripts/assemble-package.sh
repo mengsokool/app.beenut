@@ -166,6 +166,14 @@ if [[ -z "$FLUTTER_LINUX_BUNDLE_DIR" ]]; then
 fi
 
 if [[ -n "$FLUTTER_PI_BUNDLE_DIR" && -d "$FLUTTER_PI_BUNDLE_DIR" && -f "$FLUTTER_PI_BUNDLE_DIR/app.so" ]]; then
+  if [[ "$KIOSK_MODE" == "flutter-pi" && ! -x "$FLUTTER_PI_BUNDLE_DIR/flutter-pi" ]]; then
+    missing_artifact "flutter-pi bundle must contain the executable with the BeeNut preview bridge"
+  fi
+  if [[ "$KIOSK_MODE" == "flutter-pi" ]]; then
+    for required in libflutter_engine.so icudtl.dat; do
+      [[ -f "$FLUTTER_PI_BUNDLE_DIR/$required" ]] || missing_artifact "flutter-pi bundle missing $required"
+    done
+  fi
   copy_dir "$FLUTTER_PI_BUNDLE_DIR" "$PACKAGE_ROOT/opt/beenut/flutter-pi"
 elif [[ "$KIOSK_MODE" == "flutter-pi" ]]; then
   missing_artifact "flutter-pi release bundle missing app.so: build with flutterpi_tool --release and set FLUTTER_PI_BUNDLE_DIR"
@@ -174,7 +182,7 @@ else
   mkdir -p "$PACKAGE_ROOT/opt/beenut/flutter-pi"
 fi
 
-if [[ -d "$FLUTTER_LINUX_BUNDLE_DIR" && -x "$FLUTTER_LINUX_BUNDLE_DIR/beenut" ]]; then
+if [[ "$KIOSK_MODE" == "linux" && -d "$FLUTTER_LINUX_BUNDLE_DIR" && -x "$FLUTTER_LINUX_BUNDLE_DIR/beenut" ]]; then
   copy_dir "$FLUTTER_LINUX_BUNDLE_DIR" "$PACKAGE_ROOT/opt/beenut/flutter-linux"
 elif [[ "$KIOSK_MODE" == "linux" ]]; then
   missing_artifact "Flutter Linux bundle missing executable: set FLUTTER_LINUX_BUNDLE_DIR or run 'flutter build linux --release'"
@@ -247,7 +255,7 @@ base_depends = [
     "gpiod",
 ]
 if mode == "flutter-pi":
-    base_depends += ["libegl1", "libgl1", "gstreamer1.0-libcamera", "flutter-pi"]
+    base_depends += ["libegl1", "libgl1", "libdrm2", "libgbm1", "libsystemd0", "libinput10", "libudev1", "libxkbcommon0", "fontconfig", "gstreamer1.0-libcamera"]
 elif mode == "linux":
     base_depends += ["libgtk-3-0", "libegl1", "libgl1", "gstreamer1.0-libcamera", "cage"]
     if profile == "desktop":

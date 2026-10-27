@@ -224,11 +224,11 @@ def detect() -> dict[str, str | bool]:
         "has_apt": has_command("apt-get"),
         "has_dpkg": has_command("dpkg-query"),
         "has_cage": has_command("cage") or Path("/usr/bin/cage").exists(),
-        "has_flutter_pi": has_command("flutter-pi"),
+        "has_flutter_pi": has_command("flutter-pi") or (APP_ROOT / "flutter-pi/flutter-pi").is_file(),
         "has_drm": Path("/dev/dri/card0").exists(),
         "has_render_node": any(Path("/dev/dri").glob("renderD*")) if Path("/dev/dri").exists() else False,
         "has_linux_bundle": (APP_ROOT / "flutter-linux/beenut").exists(),
-        "has_flutter_pi_bundle": (APP_ROOT / "flutter-pi/kernel_blob.bin").exists(),
+        "has_flutter_pi_bundle": (APP_ROOT / "flutter-pi/app.so").is_file(),
     }
 
 
@@ -406,7 +406,7 @@ class LinuxAdapter(BaseAdapter):
             if not self.facts["has_flutter_pi"]:
                 raise SystemExit("flutter-pi is required for appliance-pi but was not found after dependency installation.")
             if not self.facts["has_flutter_pi_bundle"]:
-                raise SystemExit(f"flutter-pi asset bundle was not found at {APP_ROOT / 'flutter-pi/kernel_blob.bin'}. Reinstall the BeeNut .deb.")
+                raise SystemExit(f"flutter-pi release bundle was not found at {APP_ROOT / 'flutter-pi/app.so'}. Reinstall the BeeNut .deb.")
 
     def write_recovery_command(self) -> None:
         content = """#!/usr/bin/env sh

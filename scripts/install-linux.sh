@@ -157,11 +157,13 @@ validate_profile() {
 asset_url_for() {
   local release_json="$1"
   local arch="$2"
+  local flavor="beenut"
+  if [[ "$PROFILE" == "appliance-pi" ]]; then
+    flavor="beenut-pi"
+  fi
   sed -n 's/.*"browser_download_url": "\(.*\.deb\)".*/\1/p' "$release_json" \
-    | awk -v arch="$arch" '
-        $0 ~ "_" arch "\\.deb$" { print; found=1; exit }
-        $0 ~ arch && !found { candidate=$0 }
-        END { if (!found && candidate) print candidate }
+    | awk -v arch="$arch" -v flavor="$flavor" '
+        $0 ~ "/" flavor "_[^/]+_" arch "\\.deb$" { print; exit }
       '
 }
 
