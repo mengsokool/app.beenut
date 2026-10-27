@@ -639,9 +639,9 @@ QString GStreamerCamera::sourcePipeline() const
     }
     if (config_.source == "picamera2" || config_.source == "libcamera") {
         if (config_.device.isEmpty()) {
-            return "libcamerasrc";
+            return "libcamerasrc af-mode=continuous";
         }
-        return QString("libcamerasrc camera-name=%1").arg(config_.device);
+        return QString("libcamerasrc camera-name=%1 af-mode=continuous").arg(config_.device);
     }
     if (config_.source == "v4l2" && !config_.device.isEmpty()) {
         return QString("v4l2src device=%1").arg(config_.device);

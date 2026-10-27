@@ -116,9 +116,12 @@ class TouchWorkbench extends StatelessWidget {
                 ],
               );
             }
+            final sidePanelWidth = (constraints.maxWidth * .34)
+                .clamp(192.0, 360.0)
+                .toDouble();
             final previewWidth = math.min(
               constraints.maxHeight,
-              constraints.maxWidth - 308,
+              constraints.maxWidth - sidePanelWidth - 8,
             );
             return Row(
               crossAxisAlignment: CrossAxisAlignment.stretch,
