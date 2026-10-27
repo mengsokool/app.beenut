@@ -35,6 +35,7 @@ else()
     power_control.cpp
     service_state.cpp
   )
+  set_target_properties(beenut_service_core PROPERTIES POSITION_INDEPENDENT_CODE ON)
 
   target_include_directories(beenut_service_core PUBLIC ${CMAKE_CURRENT_SOURCE_DIR})
   target_link_libraries(beenut_service_core
