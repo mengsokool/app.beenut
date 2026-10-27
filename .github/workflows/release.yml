@@ -165,6 +165,13 @@ jobs:
             -DCMAKE_EXPORT_COMPILE_COMMANDS=ON
           cmake --build service/build -j 3
 
+      - name: Upload native daemon for Pi verification
+        uses: actions/upload-artifact@v4
+        with:
+          name: beenut-pi-camera-daemon
+          path: service/build/src/beenutd/beenutd
+          if-no-files-found: error
+
       - name: Build Flutter Linux bundle
         shell: bash
         run: |
