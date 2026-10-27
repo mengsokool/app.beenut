@@ -690,13 +690,15 @@ QString GStreamerCamera::pipelineDescription() const
                       << QString("%1,format=NV12,colorimetry=bt601").arg(previewCapsDescription());
     // Negotiate capture size directly. The previous pre-tee convert/scale and
     // redundant preview scale copied full-resolution frames unnecessarily.
+    const auto captureFormat = (config_.source == "libcamera" || config_.source == "picamera2")
+        ? ",format=NV12" : "";
     return QString(
-        "%1 ! video/x-raw,width=%2,height=%3,framerate=%4/1 ! "
+        "%1 ! video/x-raw,width=%2,height=%3,framerate=%4/1%7 ! "
         "identity name=frame_counter silent=true ! tee name=t "
         "t. ! queue leaky=downstream max-size-buffers=1 ! %5 ! appsink name=ai_sink sync=false max-buffers=1 drop=true "
         "t. ! queue leaky=downstream max-size-buffers=1 ! %6 ! appsink name=preview_sink sync=false max-buffers=1 drop=true")
         .arg(sourcePipeline()).arg(w).arg(h).arg(effectiveFps_)
-        .arg(aiTransforms.join(" ! ")).arg(previewTransforms.join(" ! "));
+        .arg(aiTransforms.join(" ! ")).arg(previewTransforms.join(" ! ")).arg(captureFormat);
 }
 
 bool GStreamerCamera::ensurePreviewMapping(int width, int height, int yStride, int uvStride, qsizetype frameSize)

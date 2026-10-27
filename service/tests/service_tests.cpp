@@ -492,6 +492,11 @@ void testCameraPipelineDropsBeforeConversion()
     gst_sample_unref(sample);
     camera.stop();
 
+    config.source = "libcamera";
+    beenut::GStreamerCamera piCamera(config, dir.filePath("pi-preview"), 320, 5);
+    expect(piCamera.pipelineDescription().contains("framerate=30/1,format=NV12"),
+           "Pi camera capture must request processed NV12, not sensor RAW");
+
     if (auto* factory = gst_element_factory_find("avfvideosrc")) {
         gst_object_unref(factory);
         config.source = "avfoundation";
