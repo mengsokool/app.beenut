@@ -376,7 +376,7 @@ static enum plugin_init_result bridge_init(struct flutterpi *flutterpi_instance,
     state->flutterpi = flutterpi_instance;
     state->socket_fd = -1;
     atomic_init(&state->running, false);
-    int ok = plugin_registry_set_receiver(BEENUT_PREVIEW_CHANNEL, kStandardMethodCall, on_method_call);
+    int ok = plugin_registry_set_receiver_locked(BEENUT_PREVIEW_CHANNEL, kStandardMethodCall, on_method_call);
     if (ok != 0) {
         free(state);
         return PLUGIN_INIT_RESULT_ERROR;
@@ -391,7 +391,7 @@ static void bridge_deinit(struct flutterpi *flutterpi_instance, void *userdata) 
     if (state == NULL) {
         return;
     }
-    plugin_registry_remove_receiver(BEENUT_PREVIEW_CHANNEL);
+    plugin_registry_remove_receiver_locked(BEENUT_PREVIEW_CHANNEL);
     stop_receiver(state);
     free(state);
 }
